@@ -135,4 +135,18 @@ class FinSightViewModelTest {
         val allTx = viewModel.filteredTransactions.value
         assertEquals(viewModel.transactions.value.size, allTx.size)
     }
+
+    @Test
+    fun setAppTheme_updatesCurrentThemeFlow() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        assertEquals(com.example.finsightai.theme.AppTheme.DECK_EMERALD, viewModel.appTheme.value)
+
+        viewModel.setAppTheme(com.example.finsightai.theme.AppTheme.CYBER_SLATE)
+        advanceUntilIdle()
+        assertEquals(com.example.finsightai.theme.AppTheme.CYBER_SLATE, viewModel.appTheme.value)
+
+        viewModel.setAppTheme(com.example.finsightai.theme.AppTheme.MIDNIGHT_BLUE)
+        advanceUntilIdle()
+        assertEquals(com.example.finsightai.theme.AppTheme.MIDNIGHT_BLUE, viewModel.appTheme.value)
+    }
 }

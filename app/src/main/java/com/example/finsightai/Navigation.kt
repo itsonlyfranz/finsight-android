@@ -42,6 +42,7 @@ import com.example.finsightai.ui.screens.DashboardScreen
 import com.example.finsightai.ui.screens.ForwardSimulatorScreen
 import com.example.finsightai.ui.screens.TransactionHistoryScreen
 import com.example.finsightai.ui.viewmodel.FinSightViewModel
+import androidx.compose.ui.platform.LocalContext
 
 enum class FinSightTab(
     val title: String,
@@ -55,7 +56,9 @@ enum class FinSightTab(
 
 @Composable
 fun MainNavigation(
-    viewModel: FinSightViewModel = viewModel()
+    viewModel: FinSightViewModel = viewModel(
+        factory = FinSightViewModel.factory(LocalContext.current.applicationContext)
+    )
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(FinSightTab.DASHBOARD) }
 

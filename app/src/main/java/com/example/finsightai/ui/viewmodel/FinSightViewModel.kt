@@ -1,6 +1,8 @@
 package com.example.finsightai.ui.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.finsightai.data.DefaultFinSightRepository
 import com.example.finsightai.data.FinSightRepository
@@ -8,6 +10,7 @@ import com.example.finsightai.model.AiInsight
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
+import com.example.finsightai.theme.AppTheme
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +28,7 @@ class FinSightViewModel(
     val categories: StateFlow<List<TransactionCategory>> = repository.categories
     val insights: StateFlow<List<AiInsight>> = repository.insights
     val monthlyIncome: StateFlow<Double> = repository.monthlyIncome
+    val appTheme: StateFlow<AppTheme> = repository.currentTheme
 
     val totalSpent: StateFlow<Double> = transactions
         .map { list ->
@@ -118,5 +122,19 @@ class FinSightViewModel(
 
     fun filterCategory(category: TransactionCategory?) {
         _selectedCategoryFilter.value = category
+    }
+
+    fun setAppTheme(theme: AppTheme) {
+        repository.updateTheme(theme)
+    }
+
+    companion object {
+        fun factory(context: Context): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                val repository = DefaultFinSightRepository(context.applicationContext)
+                return FinSightViewModel(repository) as T
+            }
+        }
     }
 }

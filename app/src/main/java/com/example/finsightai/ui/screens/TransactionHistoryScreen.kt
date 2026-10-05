@@ -21,6 +21,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.platform.LocalContext
+import com.example.finsightai.theme.EmeraldContainer
+import com.example.finsightai.util.CsvExporter
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -116,6 +123,35 @@ fun TransactionHistoryScreen(
                     Text(
                         text = "${filteredTransactions.size} recorded entries",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                    )
+                }
+
+                val context = LocalContext.current
+                OutlinedButton(
+                    onClick = {
+                        CsvExporter.exportAndShareCsv(context, filteredTransactions)
+                    },
+                    shape = RoundedCornerShape(10.dp),
+                    border = BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f)),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = EmeraldContainer.copy(alpha = 0.35f),
+                        contentColor = BrightEmerald
+                    ),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Share,
+                        contentDescription = "Export CSV",
+                        modifier = Modifier.size(16.dp),
+                        tint = BrightEmerald
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Export CSV",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = BrightEmerald
+                        )
                     )
                 }
             }

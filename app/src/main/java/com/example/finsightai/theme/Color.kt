@@ -2,7 +2,7 @@ package com.example.finsightai.theme
 
 import androidx.compose.ui.graphics.Color
 
-// FinSight AI - Dark Slate & Emerald Color System
+// FinSight AI - Dark Slate & Emerald Color System (DECK_EMERALD)
 val SlateBackground = Color(0xFF0B0F17)
 val SlateBackgroundAlt = Color(0xFF0F172A)
 val SlateSurface = Color(0xFF1E293B)
@@ -43,3 +43,23 @@ val ChartSubscriptions = Color(0xFFAB47BC)
 val ChartGroceries = Color(0xFF66BB6A)
 val ChartLifestyle = Color(0xFFFFA726)
 val ChartSalary = Color(0xFF10B981)
+
+// Cyber Slate Palette (CYBER_SLATE)
+val CyberVioletPrimary = Color(0xFF8B5CF6)
+val CyberVioletBright = Color(0xFFA78BFA)
+val CyberVioletContainer = Color(0xFF3B1D75)
+val CyberVioletBorder = Color(0xFF5B21B6)
+val CyberBackground = Color(0xFF090D16)
+val CyberSurface = Color(0xFF151C2C)
+val CyberSurfaceVariant = Color(0xFF1E273D)
+val CyberBorder = Color(0xFF2E3B54)
+
+// Midnight Blue Palette (MIDNIGHT_BLUE)
+val MidnightBluePrimary = Color(0xFF3B82F6)
+val MidnightBlueBright = Color(0xFF60A5FA)
+val MidnightBlueContainer = Color(0xFF1E3A8A)
+val MidnightBlueBorder = Color(0xFF1D4ED8)
+val MidnightBackground = Color(0xFF060B16)
+val MidnightSurface = Color(0xFF0D1B36)
+val MidnightSurfaceVariant = Color(0xFF16294D)
+val MidnightBorder = Color(0xFF203B6B)

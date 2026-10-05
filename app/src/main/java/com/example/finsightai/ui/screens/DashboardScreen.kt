@@ -36,8 +36,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import com.example.finsightai.theme.AppTheme
+import com.example.finsightai.theme.CyberVioletBright
+import com.example.finsightai.theme.MidnightBlueBright
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,6 +88,7 @@ fun DashboardScreen(
     val totalSpent by viewModel.totalSpent.collectAsStateWithLifecycle()
     val categoryBreakdown by viewModel.categoryBreakdown.collectAsStateWithLifecycle()
     val insights by viewModel.insights.collectAsStateWithLifecycle()
+    val currentTheme by viewModel.appTheme.collectAsStateWithLifecycle()
 
     val remainingBuffer = (monthlyIncome - totalSpent).coerceAtLeast(0.0)
     val spendProgress = if (monthlyIncome > 0) (totalSpent / monthlyIncome).toFloat().coerceIn(0f, 1f) else 0f
@@ -92,7 +102,10 @@ fun DashboardScreen(
     ) {
         // 1. Welcome Header (Mark Santos - Junior SWE)
         item {
-            HeaderSection()
+            HeaderSection(
+                currentTheme = currentTheme,
+                onThemeSelect = { viewModel.setAppTheme(it) }
+            )
         }
 
         // 2. Spending Summary Card
@@ -131,7 +144,10 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun HeaderSection() {
+private fun HeaderSection(
+    currentTheme: AppTheme,
+    onThemeSelect: (AppTheme) -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -178,21 +194,131 @@ private fun HeaderSection() {
             )
         }
 
-        // Profile Avatar Badge
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(SlateSurfaceVariant)
-                .border(1.dp, EmeraldPrimary.copy(alpha = 0.5f), CircleShape),
-            contentAlignment = Alignment.Center
+        // Theme Selector Chip next to Mark Santos' profile avatar
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "MS",
-                fontWeight = FontWeight.Bold,
-                color = BrightEmerald,
-                fontSize = 15.sp
+            ThemeSelectorChip(
+                currentTheme = currentTheme,
+                onThemeSelect = onThemeSelect
             )
+
+            // Profile Avatar Badge
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(SlateSurfaceVariant)
+                    .border(1.dp, EmeraldPrimary.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "MS",
+                    fontWeight = FontWeight.Bold,
+                    color = BrightEmerald,
+                    fontSize = 15.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ThemeSelectorChip(
+    currentTheme: AppTheme,
+    onThemeSelect: (AppTheme) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box {
+        Surface(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .clickable { expanded = true }
+                .border(
+                    width = 1.dp,
+                    color = SlateBorder,
+                    shape = RoundedCornerShape(12.dp)
+                ),
+            color = SlateSurfaceVariant,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                val dotColor = when (currentTheme) {
+                    AppTheme.DECK_EMERALD -> BrightEmerald
+                    AppTheme.CYBER_SLATE -> CyberVioletBright
+                    AppTheme.MIDNIGHT_BLUE -> MidnightBlueBright
+                }
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(dotColor)
+                )
+                Text(
+                    text = currentTheme.shortName,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        fontSize = 11.sp
+                    )
+                )
+                Icon(
+                    imageVector = Icons.Filled.Palette,
+                    contentDescription = "Theme Options",
+                    tint = TextSecondary,
+                    modifier = Modifier.size(13.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier
+                .background(SlateSurface)
+                .border(1.dp, SlateBorder, RoundedCornerShape(12.dp))
+        ) {
+            AppTheme.values().forEach { theme ->
+                val isSelected = theme == currentTheme
+                val dotColor = when (theme) {
+                    AppTheme.DECK_EMERALD -> BrightEmerald
+                    AppTheme.CYBER_SLATE -> CyberVioletBright
+                    AppTheme.MIDNIGHT_BLUE -> MidnightBlueBright
+                }
+
+                DropdownMenuItem(
+                    text = {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(dotColor)
+                            )
+                            Text(
+                                text = theme.displayName,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) dotColor else TextPrimary
+                                )
+                            )
+                        }
+                    },
+                    onClick = {
+                        onThemeSelect(theme)
+                        expanded = false
+                    }
+                )
+            }
         }
     }
 }

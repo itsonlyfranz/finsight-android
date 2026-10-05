@@ -2,6 +2,7 @@ package com.example.finsightai.ai
 
 import com.example.finsightai.model.TransactionCategory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -103,5 +104,48 @@ class ForwardSimulatorEngineTest {
     fun `calculateCompoundSavings returns zero for invalid inputs`() {
         assertEquals(0.0, simulator.calculateCompoundSavings(-10.0, 12), 0.001)
         assertEquals(0.0, simulator.calculateCompoundSavings(100.0, 0), 0.001)
+    }
+
+    @Test
+    fun `calculateMonthsToGoal computes accurate ceiling division with freed cashflow`() {
+        // Target $5,400, saved $2,100 -> remaining $3,300
+        // Base savings = 300, freed = 0 -> 3300 / 300 = 11 months
+        val monthsBaseline = simulator.calculateMonthsToGoal(
+            targetAmount = 5400.0,
+            currentSaved = 2100.0,
+            freedMonthlyCashflow = 0.0,
+            baseSavings = 300.0
+        )
+        assertEquals(11, monthsBaseline)
+
+        // Freed cashflow = $178/mo -> pool = $478 -> ceil(3300 / 478) = 7 months
+        val monthsAccelerated = simulator.calculateMonthsToGoal(
+            targetAmount = 5400.0,
+            currentSaved = 2100.0,
+            freedMonthlyCashflow = 178.0,
+            baseSavings = 300.0
+        )
+        assertEquals(7, monthsAccelerated)
+    }
+
+    @Test
+    fun `projectGoals produces dynamic badges and timeline projections`() {
+        val projections = simulator.projectGoals(
+            freedMonthlyCashflow = 178.0,
+            baseSavings = 300.0
+        )
+
+        assertEquals(3, projections.size)
+
+        val emergencyGoal = projections.find { it.goal.id == "goal_emergency" }
+        assertNotNull(emergencyGoal)
+        assertEquals(7, emergencyGoal!!.monthsToReach)
+        assertTrue(emergencyGoal.badgeText.contains("Reached in 7 months at +$178/mo"))
+        assertTrue(emergencyGoal.badgeText.contains("Funded by"))
+
+        val devRigGoal = projections.find { it.goal.id == "goal_dev_rig" }
+        assertNotNull(devRigGoal)
+        // Target $3200, saved $800 -> remaining $2400 / 478 = ceil(5.02) = 6 months
+        assertEquals(6, devRigGoal!!.monthsToReach)
     }
 }

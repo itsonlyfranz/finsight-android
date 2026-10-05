@@ -37,6 +37,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.material3.LinearProgressIndicator
+import com.example.finsightai.model.GoalProjection
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.TransactionCategory
 import com.example.finsightai.theme.BrightEmerald
@@ -80,6 +82,13 @@ fun ForwardSimulatorScreen(
         // Real-Time Projection Output Card
         item {
             ProjectionsSummaryCard(simulationResult = simulationResult)
+        }
+
+        // 🎯 Financial Goals Countdown
+        if (simulationResult.goalProjections.isNotEmpty()) {
+            item {
+                FinancialGoalsCountdownSection(goalProjections = simulationResult.goalProjections)
+            }
         }
 
         // AI Context Explanation Card
@@ -452,4 +461,155 @@ private fun AiContextCard(aiExplanation: String) {
 
 private fun formatCurrency(amount: Double): String {
     return String.format(Locale.US, "%,.2f", amount)
+}
+
+@Composable
+private fun FinancialGoalsCountdownSection(goalProjections: List<GoalProjection>) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, SlateBorder, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = SlateSurface)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column {
+                Text(
+                    text = "🎯 Financial Goals Countdown",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "Real-time timeline acceleration driven by freed monthly cashflow",
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
+            }
+
+            goalProjections.forEach { projection ->
+                SavingsGoalCountdownItem(projection = projection)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavingsGoalCountdownItem(projection: GoalProjection) {
+    val goal = projection.goal
+    val percentInt = (projection.progressPercentage * 100).roundToInt()
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .border(1.dp, SlateBorder, RoundedCornerShape(14.dp)),
+        color = SlateSurfaceVariant,
+        shape = RoundedCornerShape(14.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = goal.icon,
+                        fontSize = 22.sp
+                    )
+                    Column {
+                        Text(
+                            text = goal.title,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        )
+                        Text(
+                            text = goal.description,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                color = TextSecondary,
+                                fontSize = 11.sp
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Progress Bar & Amounts
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "$${formatCurrency(goal.currentSaved)} of $${formatCurrency(goal.targetAmount)}",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                    )
+                    Text(
+                        text = "$percentInt%",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = BrightEmerald
+                        )
+                    )
+                }
+
+                LinearProgressIndicator(
+                    progress = { projection.progressPercentage },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                    color = BrightEmerald,
+                    trackColor = SlateBorder
+                )
+            }
+
+            // Dynamic Acceleration Badge
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = EmeraldContainer,
+                modifier = Modifier.border(1.dp, EmeraldBorder, RoundedCornerShape(8.dp))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.AutoAwesome,
+                        contentDescription = null,
+                        tint = BrightEmerald,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Text(
+                        text = projection.badgeText,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = BrightEmerald,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp
+                        )
+                    )
+                }
+            }
+        }
+    }
 }

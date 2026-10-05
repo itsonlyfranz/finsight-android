@@ -1,18 +1,25 @@
 package com.example.finsightai.ai
 
+import com.example.finsightai.model.GoalProjection
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.TransactionCategory
+import java.time.LocalDate
 import java.util.Locale
+import kotlin.math.ceil
 import kotlin.math.roundToInt
 
 class ForwardSimulatorEngine(
-    private val defaultAnnualYield: Double = 0.045
+    private val defaultAnnualYield: Double = 0.045,
+    private val defaultBaseSavings: Double = 300.0
 ) {
 
     fun simulate(
         baselineSpending: Map<TransactionCategory, Double>,
         targetReductions: Map<TransactionCategory, Float>,
-        annualYield: Double = defaultAnnualYield
+        annualYield: Double = defaultAnnualYield,
+        goals: List<SavingsGoal> = SavingsGoal.PREPOPULATED_GOALS,
+        baseSavings: Double = defaultBaseSavings
     ): SimulationResult {
         var totalMonthlySavings = 0.0
         val categorySavings = mutableMapOf<TransactionCategory, Double>()
@@ -37,14 +44,76 @@ class ForwardSimulatorEngine(
             projected12M = proj12M
         )
 
+        val goalProjections = projectGoals(
+            goals = goals,
+            freedMonthlyCashflow = monthlySavingsRounded,
+            baseSavings = baseSavings
+        )
+
         return SimulationResult(
             targetReductions = targetReductions,
             monthlySavings = monthlySavingsRounded,
             projectedSavings3M = proj3M,
             projectedSavings6M = proj6M,
             projectedSavings12M = proj12M,
-            aiExplanation = explanation
+            aiExplanation = explanation,
+            goalProjections = goalProjections
         )
+    }
+
+    fun calculateMonthsToGoal(
+        targetAmount: Double,
+        currentSaved: Double,
+        freedMonthlyCashflow: Double,
+        baseSavings: Double = defaultBaseSavings
+    ): Int {
+        val remaining = (targetAmount - currentSaved).coerceAtLeast(0.0)
+        val monthlyContribution = baseSavings + freedMonthlyCashflow
+        if (remaining <= 0.0) return 0
+        if (monthlyContribution <= 0.0) return Int.MAX_VALUE
+        return ceil(remaining / monthlyContribution).toInt()
+    }
+
+    fun projectGoals(
+        goals: List<SavingsGoal> = SavingsGoal.PREPOPULATED_GOALS,
+        freedMonthlyCashflow: Double,
+        baseSavings: Double = defaultBaseSavings,
+        referenceDate: LocalDate = LocalDate.now()
+    ): List<GoalProjection> {
+        return goals.map { goal ->
+            val remaining = (goal.targetAmount - goal.currentSaved).coerceAtLeast(0.0)
+            val progress = if (goal.targetAmount > 0.0) {
+                (goal.currentSaved / goal.targetAmount).toFloat().coerceIn(0f, 1f)
+            } else {
+                1f
+            }
+            val months = calculateMonthsToGoal(
+                targetAmount = goal.targetAmount,
+                currentSaved = goal.currentSaved,
+                freedMonthlyCashflow = freedMonthlyCashflow,
+                baseSavings = baseSavings
+            )
+
+            val targetDate = referenceDate.plusMonths(months.toLong())
+            val monthName = targetDate.month.name.lowercase(Locale.US).replaceFirstChar { it.uppercase(Locale.US) }
+            val formattedTargetDate = "$monthName ${targetDate.year}"
+            val formattedFreed = String.format(Locale.US, "%.0f", freedMonthlyCashflow)
+
+            val badgeText = when {
+                months == 0 -> "Goal Fully Funded! 🎉"
+                freedMonthlyCashflow > 0.0 -> "Reached in $months months at +$$formattedFreed/mo • Funded by $formattedTargetDate!"
+                else -> "Reached in $months months at baseline • Funded by $formattedTargetDate"
+            }
+
+            GoalProjection(
+                goal = goal,
+                remainingAmount = remaining,
+                progressPercentage = progress,
+                monthsToReach = months,
+                formattedTargetDate = formattedTargetDate,
+                badgeText = badgeText
+            )
+        }
     }
 
     fun calculateCompoundSavings(

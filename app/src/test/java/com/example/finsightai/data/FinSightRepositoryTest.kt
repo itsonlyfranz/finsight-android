@@ -96,4 +96,24 @@ class FinSightRepositoryTest {
         assertTrue(simulation.projectedSavings12M > 124 * 12)
         assertTrue(simulation.aiExplanation.isNotEmpty())
     }
+
+    @Test
+    fun `updateTheme updates repository currentTheme state`() {
+        assertEquals(com.example.finsightai.theme.AppTheme.DECK_EMERALD, repository.currentTheme.value)
+        repository.updateTheme(com.example.finsightai.theme.AppTheme.CYBER_SLATE)
+        assertEquals(com.example.finsightai.theme.AppTheme.CYBER_SLATE, repository.currentTheme.value)
+    }
+
+    @Test
+    fun `updateMonthlyIncome updates income state`() {
+        assertEquals(3200.0, repository.monthlyIncome.value, 0.01)
+        repository.updateMonthlyIncome(4000.0)
+        assertEquals(4000.0, repository.monthlyIncome.value, 0.01)
+    }
+
+    @Test
+    fun `updateBudget updates category budget`() {
+        repository.updateBudget(TransactionCategory.CAFES_DINING, 200.0)
+        assertEquals(200.0, repository.currentBudget.value[TransactionCategory.CAFES_DINING] ?: 0.0, 0.01)
+    }
 }

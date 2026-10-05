@@ -6,5 +6,6 @@ data class SimulationResult(
     val projectedSavings3M: Double,
     val projectedSavings6M: Double,
     val projectedSavings12M: Double,
-    val aiExplanation: String
+    val aiExplanation: String,
+    val goalProjections: List<GoalProjection> = emptyList()
 )

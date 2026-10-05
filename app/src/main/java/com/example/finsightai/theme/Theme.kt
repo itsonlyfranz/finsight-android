@@ -1,11 +1,21 @@
 package com.example.finsightai.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+
+enum class AppTheme(val displayName: String, val shortName: String) {
+    DECK_EMERALD("Deck Emerald", "Emerald"),
+    CYBER_SLATE("Cyber Slate", "Cyber"),
+    MIDNIGHT_BLUE("Midnight Blue", "Midnight")
+}
+
+val LocalAppTheme = staticCompositionLocalOf { AppTheme.DECK_EMERALD }
 
 val FinSightDarkColorScheme = darkColorScheme(
     primary = EmeraldPrimary,
@@ -37,6 +47,52 @@ val FinSightDarkColorScheme = darkColorScheme(
     outlineVariant = Color(0xFF1E293B)
 )
 
+val FinSightCyberColorScheme = darkColorScheme(
+    primary = CyberVioletPrimary,
+    onPrimary = Color.White,
+    primaryContainer = CyberVioletContainer,
+    onPrimaryContainer = CyberVioletBright,
+    secondary = CyanAccent,
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF164E63),
+    onSecondaryContainer = Color(0xFFA5F3FC),
+    tertiary = CyberVioletBright,
+    onTertiary = Color.Black,
+    background = CyberBackground,
+    onBackground = TextPrimary,
+    surface = CyberSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = CyberSurfaceVariant,
+    onSurfaceVariant = TextSecondary,
+    surfaceTint = CyberVioletPrimary,
+    outline = CyberBorder,
+    error = CoralRed,
+    onError = Color.White
+)
+
+val FinSightMidnightColorScheme = darkColorScheme(
+    primary = MidnightBluePrimary,
+    onPrimary = Color.White,
+    primaryContainer = MidnightBlueContainer,
+    onPrimaryContainer = MidnightBlueBright,
+    secondary = CyanAccent,
+    onSecondary = Color.Black,
+    secondaryContainer = Color(0xFF075985),
+    onSecondaryContainer = Color(0xFFBAE6FD),
+    tertiary = MidnightBlueBright,
+    onTertiary = Color.Black,
+    background = MidnightBackground,
+    onBackground = TextPrimary,
+    surface = MidnightSurface,
+    onSurface = TextPrimary,
+    surfaceVariant = MidnightSurfaceVariant,
+    onSurfaceVariant = TextSecondary,
+    surfaceTint = MidnightBluePrimary,
+    outline = MidnightBorder,
+    error = CoralRed,
+    onError = Color.White
+)
+
 private val FinSightLightColorScheme = lightColorScheme(
     primary = EmeraldPrimaryVariant,
     onPrimary = Color.White,
@@ -57,17 +113,30 @@ private val FinSightLightColorScheme = lightColorScheme(
     outline = Color(0xFFCBD5E1)
 )
 
+fun getFinSightColorScheme(appTheme: AppTheme): ColorScheme = when (appTheme) {
+    AppTheme.DECK_EMERALD -> FinSightDarkColorScheme
+    AppTheme.CYBER_SLATE -> FinSightCyberColorScheme
+    AppTheme.MIDNIGHT_BLUE -> FinSightMidnightColorScheme
+}
+
 @Composable
 fun FinSightAITheme(
-    darkTheme: Boolean = true, // FinSight AI is designed primarily with the Dark Slate & Emerald aesthetic
+    appTheme: AppTheme = AppTheme.DECK_EMERALD,
+    darkTheme: Boolean = true,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) FinSightDarkColorScheme else FinSightLightColorScheme
+    val colorScheme = if (darkTheme) {
+        getFinSightColorScheme(appTheme)
+    } else {
+        FinSightLightColorScheme
+    }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    CompositionLocalProvider(LocalAppTheme provides appTheme) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            content = content
+        )
+    }
 }
