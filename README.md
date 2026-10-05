@@ -1,6 +1,8 @@
 # FinSight AI 📱💡
 > **Intelligent financial decision-making for early-career earners.**
 
+📦 **[Download Pre-Built APK: `finsight-ai.apk` (19.5 MB)](finsight-ai.apk)**
+
 FinSight AI is a native Android application built with **Jetpack Compose**, **Material 3**, **SQLite on-device persistence**, and an on-device **AI Behavioral Insights & Forward Simulation Engine**. It bridges the gap between passive expense logging and active financial planning for young professionals facing early-career lifestyle inflation.
 
 ---
