@@ -56,7 +56,7 @@ class CodexTextGenerator(
     override suspend fun describe(): String? {
         val signedIn = auth.state.value as? CodexAuthState.SignedIn ?: return null
         val who = signedIn.email ?: signedIn.planType ?: "ChatGPT"
-        return "Codex (${workingModel ?: accountModels?.slugs?.firstOrNull() ?: models.first()}) · $who"
+        return workingModel?.let { "Codex ($it) · $who" } ?: "Codex · $who"
     }
 
     override suspend fun generate(request: AiRequest): String {
@@ -82,22 +82,19 @@ class CodexTextGenerator(
 
     /** The account's model slugs in server order; empty (and not cached) when the list is unavailable. */
     private suspend fun listedModels(): List<String> {
-        val creds = try { auth.validAccessToken() } catch (e: CodexAuthException) { throw e.asBackend() }
+        var creds = try { auth.validAccessToken() } catch (e: CodexAuthException) { throw e.asBackend() }
         val cached = accountModels
         if (cached != null) {
             if (cached.accountId == creds.accountId) return cached.slugs
             accountModels = null
             workingModel = null
         }
-        val headers = buildMap {
-            put("Authorization", "Bearer ${creds.accessToken}")
-            creds.accountId?.let { put("chatgpt-account-id", it) }
-            put("originator", endpoints.originator)
-            put("User-Agent", endpoints.userAgent)
-            put("Accept", "application/json")
-        }
         val slugs = try {
-            val result = withTimeout(requestTimeoutMillis) { CodexHttp.send(endpoints.modelsUrl, "GET", headers, null) }
+            var result = fetchModelList(creds)
+            if (result.status == 401) {
+                creds = try { auth.validAccessToken(rejectedAccessToken = creds.accessToken) } catch (e: CodexAuthException) { throw e.asBackend() }
+                result = fetchModelList(creds)
+            }
             if (result.status !in 200..299) {
                 CodexLog.w("codex model list unavailable (HTTP ${result.status})")
                 return emptyList()
@@ -115,6 +112,17 @@ class CodexTextGenerator(
         }
         accountModels = AccountModels(creds.accountId, slugs)
         return slugs
+    }
+
+    private suspend fun fetchModelList(creds: AccessCreds): HttpResult {
+        val headers = buildMap {
+            put("Authorization", "Bearer ${creds.accessToken}")
+            creds.accountId?.let { put("chatgpt-account-id", it) }
+            put("originator", endpoints.originator)
+            put("User-Agent", endpoints.userAgent)
+            put("Accept", "application/json")
+        }
+        return withTimeout(requestTimeoutMillis) { CodexHttp.send(endpoints.modelsUrl, "GET", headers, null) }
     }
 
     private suspend fun attempt(request: AiRequest, model: String, useInstructionsField: Boolean): String {

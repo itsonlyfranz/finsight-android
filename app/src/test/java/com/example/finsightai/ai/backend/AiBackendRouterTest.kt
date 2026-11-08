@@ -43,6 +43,18 @@ class AiBackendRouterTest {
         assertTrue(eff is EffectiveBackend.Deterministic)
     }
 
+    @Test fun labelDescribesTheBackendAfterItAnswered() = runTest {
+        val codex = object : TextGenerator {
+            var learned: String? = null
+            override val id = "codex"
+            override suspend fun describe() = "Codex (${learned ?: "unknown"})"
+            override suspend fun isReady() = true
+            override suspend fun generate(request: AiRequest): String { learned = "codex-auto-review"; return "hi" }
+        }
+        val router = AiBackendRouter(MutableStateFlow(BackendChoice.CODEX), mapOf(BackendChoice.CODEX to codex))
+        assertEquals("Codex (codex-auto-review)", router.generate(req)!!.by)
+    }
+
     @Test fun failureReturnsNullAndRecordsError() = runTest {
         val codex = Fake("codex", fail = true)
         val router = AiBackendRouter(MutableStateFlow(BackendChoice.CODEX), mapOf(BackendChoice.CODEX to codex))

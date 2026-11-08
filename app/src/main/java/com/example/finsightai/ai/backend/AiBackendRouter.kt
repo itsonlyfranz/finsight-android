@@ -37,11 +37,10 @@ class AiBackendRouter(
     override suspend fun generate(request: AiRequest): GeneratedText? {
         val generator = generators[choiceFlow.value] ?: return null
         if (!generator.isReady()) return null
-        val label = generator.describe() ?: generator.id
         return try {
             val text = generator.generate(request)
             _lastError.value = null
-            GeneratedText(text, label)
+            GeneratedText(text, generator.describe() ?: generator.id)
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (e: AiBackendException) {

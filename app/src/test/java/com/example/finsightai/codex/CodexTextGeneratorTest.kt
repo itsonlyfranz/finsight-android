@@ -141,6 +141,7 @@ class CodexTextGeneratorTest {
             else Reply(400, """{"detail":"The '$m' model is not supported when using Codex with a ChatGPT account."}""")
         }
         val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        assertEquals("Codex · mark@example.com", gen.describe())
         assertEquals("listed", gen.generate(request))
         assertEquals("listed", gen.generate(request))
         assertEquals(listOf("codex-auto-review", "codex-auto-review"), tried)
@@ -150,6 +151,26 @@ class CodexTextGeneratorTest {
         assertEquals("acct-1", list.headers["chatgpt-account-id"])
         assertEquals("codex_cli_rs", list.headers["originator"])
         assertEquals("Codex (codex-auto-review) · mark@example.com", gen.describe())
+    }
+
+    @Test fun rejectedTokenOnModelListRefreshesAndStillUsesTheListedModel() = runBlocking {
+        server.on(FakeCodexServer.MODELS) { r ->
+            if (r.headers["authorization"] == "Bearer tok-1") Reply(401, """{"detail":"expired"}""")
+            else Reply(200, """{"models":[{"slug":"codex-auto-review"}]}""")
+        }
+        server.on(FakeCodexServer.OAUTH_TOKEN) { Reply(200, """{"access_token":"tok-2","refresh_token":"ref-2"}""") }
+        val tried = mutableListOf<String>()
+        server.on(FakeCodexServer.RESPONSES) { r ->
+            val m = modelOf(r)
+            tried.add(m)
+            if (m == "codex-auto-review" && r.headers["authorization"] == "Bearer tok-2") Reply(200, sse("listed"), "text/event-stream")
+            else Reply(400, """{"detail":"The '$m' model is not supported when using Codex with a ChatGPT account."}""")
+        }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        assertEquals("listed", gen.generate(request))
+        assertEquals(listOf("codex-auto-review"), tried)
+        assertEquals(1, server.count(FakeCodexServer.OAUTH_TOKEN))
+        assertEquals(2, server.count(FakeCodexServer.MODELS))
     }
 
     @Test fun failingModelListFallsBackToDefaultModels() = runBlocking {
