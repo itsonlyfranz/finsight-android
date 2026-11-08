@@ -51,6 +51,6 @@ Logs only contain event names, HTTP status codes and exception class names, neve
 - This uses the **Codex CLI's public OAuth client id** and mimics its `originator` header. OpenAI does not publish this flow as a supported third-party API; they can change, throttle or block it at any time.
 - ChatGPT plan limits apply to every AI call (free/Plus/Pro/Business have different Codex allowances); there is no API-key billing in this path.
 - The inference request body follows the current CLI source (`input` items of type `message` / `input_text`, system prompt as a `developer` message, `store:false`, `stream:true`, `reasoning.effort:"low"`, no tools). It was **not** verifiable without an account; the code falls back to the older top-level `instructions` field automatically if the backend objects.
-- Model slugs are best guesses taken from the CLI's bundled catalogue; the one that works for your account is remembered for the session.
+- The fallback slugs in `CodexTextGenerator.DEFAULT_MODELS` are best guesses taken from the CLI's bundled catalogue and are only tried after your picked model and the rest of the account's list; a fallback that works is remembered for the session and then tried right after your picked model.
 - Sign-out is local only (tokens deleted from the device). Revoke the session in ChatGPT settings if you also want it invalidated server-side.
 - Tokens cannot be recovered if the device Keystore key is lost (e.g. restored backup onto a new phone): you will simply be signed out.

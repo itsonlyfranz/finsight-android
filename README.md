@@ -83,7 +83,7 @@ All unit tests run via Gradle test runner:
 ```bash
 ./gradlew testDebugUnitTest
 ```
-- **140 JVM unit tests passing** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original 32 are:
+- **159 JVM unit tests passing** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original 32 are:
   - `AiInsightsEngineTest`: 6 tests
   - `ForwardSimulatorEngineTest`: 7 tests
   - `FinSightRepositoryTest`: 9 tests
