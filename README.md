@@ -84,6 +84,11 @@ All unit tests run via Gradle test runner:
 
 ---
 
+## ⚙️ Continuous Integration
+`.github/workflows/android-ci.yml` runs on every pull request and on pushes to `main`, on a **self-hosted Mac mini runner** (`runs-on: finsight-android-mac`, jobs run directly on the host). It builds the debug APK, runs the unit tests, then boots a dedicated headless emulator (`finsight_ci_api36`, API 36, wiped each run) and runs the instrumented tests. Test reports are uploaded as artifacts.
+
+---
+
 ## 🚀 Building & Running
 
 ### Build Debug APK
