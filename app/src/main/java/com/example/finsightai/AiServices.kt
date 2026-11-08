@@ -59,12 +59,15 @@ class AiServices(
         mapOf(BackendChoice.ON_DEVICE to onDeviceGenerator, BackendChoice.CODEX to codex),
     )
 
-    /** Emits whenever the effective AI backend may have changed (selection, active model, Codex sign-in). */
+    /** Emits whenever the effective AI backend may have changed (selection, active model, Codex sign-in or model). */
     val signal: Flow<Any?> = combine(
         backendPrefs.choice,
         modelStore.activeModel.map { it?.id },
         codexAuth.state.map { it is CodexAuthState.SignedIn },
-    ) { choice, model, signedIn -> Triple(choice, model, signedIn) }.distinctUntilChanged()
+        codex.selectedModel,
+    ) { choice, model, signedIn, codexModel ->
+        listOf(choice, model, signedIn, codexModel.takeIf { choice == BackendChoice.CODEX })
+    }.distinctUntilChanged()
 
     init {
         // Free the model's RAM as soon as it is deactivated or deleted.

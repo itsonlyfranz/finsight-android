@@ -101,6 +101,43 @@ class AiFeaturesE2ETest {
         rule.onAllNodesWithText("High Cafe & Dining Velocity").fetchSemanticsNodes().let { assert(it.isNotEmpty()) }
     }
 
+    private fun useSignedInCodex() {
+        rule.onNodeWithTag("tab_ai_setup").performClick()
+        rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("backend_codex"))
+        rule.onNodeWithTag("backend_codex").performClick()
+        h.codexClient.approved = true
+        h.codexAuth.startSignIn()
+        rule.waitUntil(10_000) { h.codexAuth.isSignedIn }
+    }
+
+    @Test fun pickingAnotherCodexModelRewritesTheInsightsWithIt() {
+        useSignedInCodex()
+        rule.onNodeWithTag("tab_insights").performClick()
+        waitUntilGeneratedBy("Written by Codex (codex-auto-review)")
+
+        rule.onNodeWithTag("tab_ai_setup").performClick()
+        rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("codex_card"))
+        rule.waitUntil(10_000) { rule.onAllNodesWithTag("codex_model_gpt-fake-mini").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("codex_model_gpt-fake-mini"))
+        rule.onNodeWithTag("codex_model_gpt-fake-mini").performClick()
+
+        rule.onNodeWithTag("tab_insights").performClick()
+        waitUntilGeneratedBy("Written by Codex (gpt-fake-mini)")
+    }
+
+    @Test fun codexModelListThatFailedToLoadIsRetriedWhenAiSetupIsShownAgain() {
+        h.codex.models = emptyList()
+        useSignedInCodex()
+        rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("codex_card"))
+        rule.waitUntil(10_000) { rule.onAllNodesWithTag("codex_models_error").fetchSemanticsNodes().isNotEmpty() }
+
+        h.codex.models = listOf("codex-auto-review", "gpt-fake-mini")
+        rule.onNodeWithTag("tab_insights").performClick()
+        rule.onNodeWithTag("tab_ai_setup").performClick()
+        rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("codex_card"))
+        rule.waitUntil(10_000) { rule.onAllNodesWithTag("codex_model_codex-auto-review").fetchSemanticsNodes().isNotEmpty() }
+    }
+
     @Test fun switchingToCodexUsesCodexWhenSignedInAndFallsBackWhenNot() {
         installModel()
         rule.onNodeWithTag("tab_ai_setup").performClick()

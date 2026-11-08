@@ -205,6 +205,12 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
         _effective.value = services.router.effective()
     }
 
+    /** Retries loading the account's models when the last attempt failed (called when AI Setup is shown). */
+    fun retryCodexModelsIfUnavailable() {
+        if (_codexModels.value != CodexModelsUi.Unavailable || !services.codexAuth.isSignedIn) return
+        viewModelScope.launch { loadCodexModels() }
+    }
+
     /** Takes effect on the next AI request. */
     fun selectCodexModel(model: String) {
         services.codex.select(model)

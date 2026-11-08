@@ -27,6 +27,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -72,6 +73,7 @@ fun AiSetupScreen(viewModel: AiSetupViewModel, modifier: Modifier = Modifier) {
         return
     }
 
+    LaunchedEffect(Unit) { viewModel.retryCodexModelsIfUnavailable() }
     val choice by viewModel.backendChoice.collectAsStateWithLifecycle()
     val effective by viewModel.effective.collectAsStateWithLifecycle()
     val installed by viewModel.installed.collectAsStateWithLifecycle()
