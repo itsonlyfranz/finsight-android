@@ -173,6 +173,42 @@ class CodexTextGeneratorTest {
         assertEquals(2, server.count(FakeCodexServer.MODELS))
     }
 
+    @Test fun transientModelListFailureIsRetriedOnTheNextCall() = runBlocking {
+        val dropping = java.util.concurrent.atomic.AtomicBoolean(true)
+        server.on(FakeCodexServer.MODELS) {
+            if (dropping.get()) throw IllegalStateException("connection dropped")
+            Reply(200, """{"models":[{"slug":"codex-auto-review"}]}""")
+        }
+        server.on(FakeCodexServer.RESPONSES) { r ->
+            val m = modelOf(r)
+            if (m == "codex-auto-review") Reply(200, sse("listed"), "text/event-stream")
+            else Reply(400, """{"detail":"The '$m' model is not supported when using Codex with a ChatGPT account."}""")
+        }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        try { gen.generate(request); fail("defaults are rejected for this account") } catch (e: AiBackendException) {
+            assertTrue(e.message!!.contains("does not offer this model"))
+        }
+        dropping.set(false)
+        assertEquals("listed", gen.generate(request).text)
+    }
+
+    @Test fun modelListServerErrorIsRefetchedOnceEveryModelIsRejected() = runBlocking {
+        val listCalls = AtomicInteger()
+        server.on(FakeCodexServer.MODELS) {
+            if (listCalls.incrementAndGet() == 1) Reply(500, """{"detail":"boom"}""")
+            else Reply(200, """{"models":[{"slug":"codex-auto-review"}]}""")
+        }
+        server.on(FakeCodexServer.RESPONSES) { r ->
+            val m = modelOf(r)
+            if (m == "codex-auto-review") Reply(200, sse("listed"), "text/event-stream")
+            else Reply(400, """{"detail":"The '$m' model is not supported when using Codex with a ChatGPT account."}""")
+        }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        try { gen.generate(request); fail() } catch (_: AiBackendException) {}
+        assertEquals("listed", gen.generate(request).text)
+        assertEquals(2, server.count(FakeCodexServer.MODELS))
+    }
+
     @Test fun failingModelListFallsBackToDefaultModels() = runBlocking {
         server.on(FakeCodexServer.MODELS) { Reply(500, """{"detail":"boom"}""") }
         val tried = mutableListOf<String>()

@@ -47,7 +47,7 @@ class CodexTextGenerator(
     @Volatile private var workingModel: String? = null
     @Volatile private var accountModels: AccountModels? = null
 
-    private class AccountModels(val accountId: String?, val slugs: List<String>)
+    private class AccountModels(val accountId: String?, val slugs: List<String>, val fetchFailed: Boolean)
 
     @Serializable private data class ModelList(val models: List<ModelEntry> = emptyList())
     @Serializable private data class ModelEntry(val slug: String? = null)
@@ -82,10 +82,14 @@ class CodexTextGenerator(
                 }
             }
         }
+        if (accountModels?.fetchFailed == true) accountModels = null
         throw lastError ?: AiBackendException("Codex did not return an answer.")
     }
 
-    /** The account's model slugs in server order, fetched once per account; empty when the list is unavailable. */
+    /**
+     * The account's model slugs in server order, fetched once per account. A server error answer is
+     * remembered as an empty list; timeouts and connection failures are not, so the next call retries.
+     */
     private suspend fun listedModels(): List<String> {
         var creds = try { auth.validAccessToken() } catch (e: CodexAuthException) { throw e.asBackend() }
         val cached = accountModels
@@ -104,20 +108,20 @@ class CodexTextGenerator(
                 json.decodeFromString(ModelList.serializer(), result.body).models.mapNotNull { it.slug?.takeIf(String::isNotBlank) }
             } else {
                 CodexLog.w("codex model list unavailable (HTTP ${result.status})")
-                emptyList()
+                null
             }
         } catch (e: TimeoutCancellationException) {
             CodexLog.w("codex model list timed out")
-            emptyList()
+            return emptyList()
         } catch (e: IOException) {
             CodexLog.w("codex model list failed: ${e.javaClass.simpleName}")
-            emptyList()
+            return emptyList()
         } catch (e: IllegalArgumentException) {
             CodexLog.w("codex model list unreadable")
-            emptyList()
+            null
         }
-        accountModels = AccountModels(creds.accountId, slugs)
-        return slugs
+        accountModels = AccountModels(creds.accountId, slugs.orEmpty(), fetchFailed = slugs == null)
+        return slugs.orEmpty()
     }
 
     private suspend fun fetchModelList(creds: AccessCreds): HttpResult {
