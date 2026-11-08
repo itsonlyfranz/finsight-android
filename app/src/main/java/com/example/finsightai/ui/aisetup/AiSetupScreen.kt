@@ -342,6 +342,7 @@ fun HuggingFaceSearchScreen(viewModel: AiSetupViewModel, onBack: () -> Unit, mod
     val downloads by viewModel.downloads.collectAsStateWithLifecycle()
     val active by viewModel.activeModel.collectAsStateWithLifecycle()
     val hasToken by viewModel.hasHfToken.collectAsStateWithLifecycle()
+    val tokenError by viewModel.hfTokenError.collectAsStateWithLifecycle()
     val installedById = installed.associateBy { it.id }
     var pendingDelete by rememberSaveable { mutableStateOf<String?>(null) }
 
@@ -385,6 +386,7 @@ fun HuggingFaceSearchScreen(viewModel: AiSetupViewModel, onBack: () -> Unit, mod
                         modifier = Modifier.fillMaxWidth().testTag("hf_token_field")
                     )
                     Button(onClick = { viewModel.saveHfToken(token); token = "" }, modifier = Modifier.testTag("hf_token_save")) { Text("Save token") }
+                    tokenError?.let { Text(it, modifier = Modifier.testTag("hf_token_error"), color = CoralRed) }
                 }
             }
         }

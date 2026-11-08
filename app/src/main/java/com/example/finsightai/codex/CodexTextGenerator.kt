@@ -85,7 +85,7 @@ class CodexTextGenerator(
         throw lastError ?: AiBackendException("Codex did not return an answer.")
     }
 
-    /** The account's model slugs in server order; empty (and not cached) when the list is unavailable. */
+    /** The account's model slugs in server order, fetched once per account; empty when the list is unavailable. */
     private suspend fun listedModels(): List<String> {
         var creds = try { auth.validAccessToken() } catch (e: CodexAuthException) { throw e.asBackend() }
         val cached = accountModels
@@ -100,20 +100,21 @@ class CodexTextGenerator(
                 creds = try { auth.validAccessToken(rejectedAccessToken = creds.accessToken) } catch (e: CodexAuthException) { throw e.asBackend() }
                 result = fetchModelList(creds)
             }
-            if (result.status !in 200..299) {
+            if (result.status in 200..299) {
+                json.decodeFromString(ModelList.serializer(), result.body).models.mapNotNull { it.slug?.takeIf(String::isNotBlank) }
+            } else {
                 CodexLog.w("codex model list unavailable (HTTP ${result.status})")
-                return emptyList()
+                emptyList()
             }
-            json.decodeFromString(ModelList.serializer(), result.body).models.mapNotNull { it.slug?.takeIf(String::isNotBlank) }
         } catch (e: TimeoutCancellationException) {
             CodexLog.w("codex model list timed out")
-            return emptyList()
+            emptyList()
         } catch (e: IOException) {
             CodexLog.w("codex model list failed: ${e.javaClass.simpleName}")
-            return emptyList()
+            emptyList()
         } catch (e: IllegalArgumentException) {
             CodexLog.w("codex model list unreadable")
-            return emptyList()
+            emptyList()
         }
         accountModels = AccountModels(creds.accountId, slugs)
         return slugs

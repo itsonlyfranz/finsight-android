@@ -15,6 +15,7 @@ import com.example.finsightai.llm.ModelSpec
 import com.example.finsightai.llm.hf.HfApiException
 import com.example.finsightai.llm.hf.HfError
 import com.example.finsightai.llm.hf.SearchResult
+import com.example.finsightai.security.SecretStoreException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -64,6 +65,9 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
 
     private val _hasHfToken = MutableStateFlow(services.hfTokens.hasToken())
     val hasHfToken: StateFlow<Boolean> = _hasHfToken.asStateFlow()
+
+    private val _hfTokenError = MutableStateFlow<String?>(null)
+    val hfTokenError: StateFlow<String?> = _hfTokenError.asStateFlow()
 
     private val jobs = mutableMapOf<String, Job>()
     private var searchJob: Job? = null
@@ -146,7 +150,13 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
     fun saveHfToken(token: String) {
         val t = token.trim()
         if (t.isEmpty()) return
-        services.hfTokens.set(t)
+        try {
+            services.hfTokens.set(t)
+        } catch (e: SecretStoreException) {
+            _hfTokenError.value = "Could not save the token securely on this device."
+            return
+        }
+        _hfTokenError.value = null
         _hasHfToken.value = true
     }
 

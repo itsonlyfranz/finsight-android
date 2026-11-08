@@ -182,7 +182,9 @@ class CodexTextGeneratorTest {
         }
         val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
         assertEquals("default", gen.generate(request).text)
-        assertEquals(listOf(CodexTextGenerator.DEFAULT_MODELS.first()), tried)
+        assertEquals("default", gen.generate(request).text)
+        assertEquals(listOf(CodexTextGenerator.DEFAULT_MODELS.first(), CodexTextGenerator.DEFAULT_MODELS.first()), tried)
+        assertEquals("a failed model list is not refetched on every call", 1, server.count(FakeCodexServer.MODELS))
         assertEquals("Codex (${CodexTextGenerator.DEFAULT_MODELS.first()}) · mark@example.com", gen.describe())
     }
 
