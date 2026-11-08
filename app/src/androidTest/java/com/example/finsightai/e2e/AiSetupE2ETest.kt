@@ -109,6 +109,7 @@ class AiSetupE2ETest {
         waitForTag("error_${bonsai.id}")
         rule.onNodeWithTag("error_${bonsai.id}").assertTextContains("Tap Retry", substring = true)
         // Retry works once the network is back.
+        scrollTo("download_${bonsai.id}")
         rule.onNodeWithTag("download_${bonsai.id}").performClick()
         waitForTag("progress_${bonsai.id}")
         h.downloader.release()
@@ -204,6 +205,7 @@ class AiSetupE2ETest {
         rule.onNodeWithTag("codex_status").assertTextContains("mark@example.com", substring = true)
         assertTrue(h.codexAuth.state.value is CodexAuthState.SignedIn)
 
+        scrollTo("codex_sign_out")
         rule.onNodeWithTag("codex_sign_out").performClick()
         waitForTag("codex_sign_in")
         assertTrue(h.codexAuth.state.value is CodexAuthState.SignedOut)
