@@ -17,11 +17,13 @@ import com.example.finsightai.llm.hf.HfError
 import com.example.finsightai.llm.hf.SearchResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Per-model download progress shown on a model card. */
 sealed interface DownloadUi {
@@ -32,6 +34,9 @@ sealed interface DownloadUi {
     data object Verifying : DownloadUi
     data class Failed(val message: String, val needsToken: Boolean) : DownloadUi
 }
+
+/** A download the UI is tracking, with the spec so it can be shown outside the screen it started on. */
+data class ActiveDownload(val spec: ModelSpec, val state: DownloadUi)
 
 sealed interface SearchUiState {
     data object Idle : SearchUiState
@@ -51,8 +56,8 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
     private val _effective = MutableStateFlow<EffectiveBackend?>(null)
     val effective: StateFlow<EffectiveBackend?> = _effective.asStateFlow()
 
-    private val _downloads = MutableStateFlow<Map<String, DownloadUi>>(emptyMap())
-    val downloads: StateFlow<Map<String, DownloadUi>> = _downloads.asStateFlow()
+    private val _downloads = MutableStateFlow<Map<String, ActiveDownload>>(emptyMap())
+    val downloads: StateFlow<Map<String, ActiveDownload>> = _downloads.asStateFlow()
 
     private val _search = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     val search: StateFlow<SearchUiState> = _search.asStateFlow()
@@ -73,37 +78,37 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
     fun selectBackend(choice: BackendChoice) = services.backendPrefs.select(choice)
 
     // ---- models ----
+    /**
+     * Starts downloading [spec]. A previous, cancelled job for the same spec is awaited first: it owns
+     * the `.part` file until it has finished deleting it.
+     */
     fun download(spec: ModelSpec) {
-        if (jobs[spec.id]?.isActive == true) return
-        _downloads.update { it + (spec.id to DownloadUi.Queued) }
+        val previous = jobs[spec.id]
+        if (previous?.isActive == true) return
+        show(spec, DownloadUi.Queued)
         jobs[spec.id] = viewModelScope.launch {
-            try {
-                services.downloader.download(spec).collect { state ->
-                    when (state) {
-                        DownloadState.Queued -> _downloads.update { it + (spec.id to DownloadUi.Queued) }
-                        is DownloadState.Progress ->
-                            _downloads.update { it + (spec.id to DownloadUi.Progress(state.bytesDone, state.totalBytes)) }
-                        DownloadState.Verifying -> _downloads.update { it + (spec.id to DownloadUi.Verifying) }
-                        is DownloadState.Completed -> _downloads.update { it - spec.id }
-                        is DownloadState.Failed ->
-                            _downloads.update { it + (spec.id to DownloadUi.Failed(describe(state.error), needsToken(state.error))) }
-                    }
+            withContext(NonCancellable) { previous?.join() }
+            services.downloader.download(spec).collect { state ->
+                when (state) {
+                    DownloadState.Queued -> show(spec, DownloadUi.Queued)
+                    is DownloadState.Progress -> show(spec, DownloadUi.Progress(state.bytesDone, state.totalBytes))
+                    DownloadState.Verifying -> show(spec, DownloadUi.Verifying)
+                    is DownloadState.Completed -> _downloads.update { it - spec.id }
+                    is DownloadState.Failed -> show(spec, DownloadUi.Failed(describe(state.error), needsToken(state.error)))
                 }
-            } catch (cancel: CancellationException) {
-                throw cancel
             }
         }
     }
 
-    /** Stops an in-flight download and removes its partial file. */
+    private fun show(spec: ModelSpec, state: DownloadUi) = _downloads.update { it + (spec.id to ActiveDownload(spec, state)) }
+
+    /** Stops an in-flight download; the downloader deletes its partial file as it unwinds. */
     fun cancelDownload(spec: ModelSpec) {
-        jobs.remove(spec.id)?.cancel()
-        services.modelStore.discardPartial(spec)
+        jobs[spec.id]?.cancel()
         _downloads.update { it - spec.id }
     }
 
     fun dismissFailure(spec: ModelSpec) {
-        services.modelStore.discardPartial(spec)
         _downloads.update { it - spec.id }
     }
 
@@ -160,13 +165,14 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
     private fun needsToken(error: DownloadError) = error is DownloadError.Unauthorized
 
     private fun describe(error: DownloadError): String = when (error) {
-        is DownloadError.Network -> "Network problem: ${error.detail}. Tap Download to resume."
+        is DownloadError.Network -> "Network problem: ${error.detail}. Tap Retry to download again."
         is DownloadError.Unauthorized ->
             if (error.hadToken) "Hugging Face rejected your token for this model." else "This model is gated: add a Hugging Face token below."
         DownloadError.NotFound -> "The file was not found on Hugging Face."
         is DownloadError.DiskFull -> "Not enough free storage."
         is DownloadError.SizeMismatch -> "The downloaded file was incomplete. Try again."
         is DownloadError.ChecksumMismatch -> "The downloaded file failed its integrity check."
+        is DownloadError.Storage -> "Could not save the model on this device: ${error.detail}."
     }
 
     private fun describe(error: HfError): String = when (error) {

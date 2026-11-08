@@ -16,6 +16,7 @@ import com.example.finsightai.codex.DeviceCode
 import com.example.finsightai.codex.DevicePoll
 import com.example.finsightai.llm.DownloadError
 import com.example.finsightai.llm.DownloadState
+import com.example.finsightai.llm.HttpModelDownloader
 import com.example.finsightai.llm.InMemoryKeyValueStore
 import com.example.finsightai.llm.ModelDownloader
 import com.example.finsightai.llm.ModelSpec
@@ -114,8 +115,14 @@ class FakeCodexClient : CodexAuthClient() {
     )
 }
 
-/** The real object graph with fakes at the edges (network, native runtime). */
-class TestHarness(context: Context = InstrumentationRegistry.getInstrumentation().targetContext) {
+/**
+ * The real object graph with fakes at the edges (network, native runtime). With [downloadBaseUrl] the
+ * real [HttpModelDownloader] is used against that server instead of [FakeDownloader].
+ */
+class TestHarness(
+    context: Context = InstrumentationRegistry.getInstrumentation().targetContext,
+    downloadBaseUrl: String? = null,
+) {
     val root: File = File(context.cacheDir, "e2e-models-${System.nanoTime()}").also { it.mkdirs() }
     val secrets = InMemorySecretStore()
     val store = ModelStore(root, InMemoryKeyValueStore())
@@ -129,7 +136,9 @@ class TestHarness(context: Context = InstrumentationRegistry.getInstrumentation(
     val services = AiServices(
         secrets = secrets,
         modelStore = store,
-        downloader = downloader,
+        downloader = downloadBaseUrl?.let {
+            HttpModelDownloader(store, baseUrl = it, freeSpace = { Long.MAX_VALUE }, maxRetries = 0, readTimeoutMs = 5_000)
+        } ?: downloader,
         hfSearch = HfSearchService(hfApi, hasToken = { hfTokens.hasToken() }),
         hfTokens = hfTokens,
         codexAuth = codexAuth,

@@ -39,8 +39,6 @@ data class ModelSpec(
     /** Path component(s) after `resolve/main/` for this file. */
     val resolvePath: String get() = "$repoId/resolve/main/$fileName"
 
-    val hubUrl: String get() = "https://huggingface.co/$repoId"
-
     companion object {
         fun idFor(repoId: String, fileName: String) = "$repoId/$fileName"
     }

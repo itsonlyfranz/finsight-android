@@ -1,8 +1,8 @@
 package com.example.finsightai.llm
 
-/** Receives streamed text pieces from native code; return false to cancel generation. */
+/** Receives streamed UTF-8 text pieces from native code; return false to cancel generation. */
 fun interface TokenSink {
-    fun onToken(piece: String): Boolean
+    fun onToken(piece: ByteArray): Boolean
 }
 
 /**

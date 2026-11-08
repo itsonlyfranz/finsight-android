@@ -60,11 +60,6 @@ class ModelStore(
 
     fun isInstalled(id: String): Boolean = find(id) != null
 
-    fun installedBytes(): Long = _installed.value.sumOf { it.sizeOnDisk }
-
-    /** Bytes already present for an unfinished download of [spec] (0 when none). */
-    fun partialBytes(spec: ModelSpec): Long = partFile(spec).let { if (it.isFile) it.length() else 0L }
-
     /**
      * Registers a finished download: atomically renames [partFile] into place, then writes the
      * manifest. The first installed model becomes the active one automatically.
@@ -79,7 +74,12 @@ class ModelStore(
         }
         val model = InstalledModel(spec, target, clock())
         val updated = _installed.value.filterNot { it.id == spec.id } + model
-        writeManifest(updated)
+        try {
+            writeManifest(updated)
+        } catch (e: IOException) {
+            target.delete()
+            throw e
+        }
         _installed.value = updated
         if (_active.value == null && settings.getString(KEY_ACTIVE).isNullOrBlank()) {
             setActiveLocked(model.id)
@@ -114,11 +114,14 @@ class ModelStore(
         spec?.let { s -> partFile(s).let { p -> if (p.isFile) { freed += p.length(); p.delete() } } }
         if (model != null) {
             val updated = _installed.value.filterNot { it.id == id }
-            writeManifest(updated)
             _installed.value = updated
             if (_active.value?.id == id) {
                 settings.putString(KEY_ACTIVE, null)
                 _active.value = null
+            }
+            try {
+                writeManifest(updated)
+            } catch (_: IOException) {
             }
         }
         freed

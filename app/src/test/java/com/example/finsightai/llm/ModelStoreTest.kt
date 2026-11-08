@@ -29,7 +29,6 @@ class ModelStoreTest {
         assertEquals(100L, ia.sizeOnDisk)
         assertEquals(setOf("acme/a", "acme/b"), store.installed.value.map { it.id }.toSet())
         assertEquals("acme/a", store.activeModel.value?.id)
-        assertEquals(300L, store.installedBytes())
         assertFalse(store.partFile(a).exists())
         assertTrue(store.targetFile(a).isFile)
     }
@@ -96,9 +95,8 @@ class ModelStoreTest {
         val store = newStore()
         val a = spec("a", 100)
         store.partFile(a).also { it.parentFile!!.mkdirs() }.writeBytes(ByteArray(30))
-        assertEquals(30L, store.partialBytes(a))
         assertEquals(30L, store.discardPartial(a))
-        assertEquals(0L, store.partialBytes(a))
+        assertFalse(store.partFile(a).exists())
     }
 
     @Test fun vanishedOrTruncatedFilesAreDroppedOnReload() {

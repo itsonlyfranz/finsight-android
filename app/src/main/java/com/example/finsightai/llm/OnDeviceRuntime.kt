@@ -79,7 +79,8 @@ class LlamaCppRuntime(context: Context) : OnDeviceRuntime {
                 request.user,
                 request.maxTokens,
                 request.temperature,
-                TokenSink { piece ->
+                TokenSink { bytes ->
+                    val piece = String(bytes, Charsets.UTF_8)
                     out.append(piece)
                     onPiece(piece)
                     job.isActive

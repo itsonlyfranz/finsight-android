@@ -12,7 +12,6 @@ data class HubRepo(
     val libraryName: String? = null,
     val pipelineTag: String? = null,
     val ggufArchitecture: String? = null,
-    val contextLength: Long? = null,
     val gated: Boolean = false,
     val downloads: Long = 0,
     val likes: Long = 0,

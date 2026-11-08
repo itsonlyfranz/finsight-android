@@ -82,6 +82,7 @@ fun AiSetupScreen(viewModel: AiSetupViewModel, modifier: Modifier = Modifier) {
     val installedById = installed.associateBy { it.id }
     val curatedIds = CuratedModels.all.map { it.id }.toSet()
     val searchInstalled = installed.filter { it.id !in curatedIds }
+    val searchDownloads = downloads.values.filter { it.spec.id !in curatedIds && it.spec.id !in installedById }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("ai_setup_list"),
@@ -108,7 +109,7 @@ fun AiSetupScreen(viewModel: AiSetupViewModel, modifier: Modifier = Modifier) {
                     spec = spec,
                     installed = installedById[spec.id],
                     isActive = active?.id == spec.id,
-                    download = downloads[spec.id],
+                    download = downloads[spec.id]?.state,
                     onDownload = { viewModel.download(spec) },
                     onCancel = { viewModel.cancelDownload(spec) },
                     onDismiss = { viewModel.dismissFailure(spec) },
@@ -118,7 +119,7 @@ fun AiSetupScreen(viewModel: AiSetupViewModel, modifier: Modifier = Modifier) {
             }
         }
 
-        if (searchInstalled.isNotEmpty() || downloads.keys.any { it !in curatedIds }) {
+        if (searchInstalled.isNotEmpty() || searchDownloads.isNotEmpty()) {
             item { Text("From Hugging Face search", style = MaterialTheme.typography.titleSmall.copy(color = BrightEmerald, fontWeight = FontWeight.Bold)) }
             items(searchInstalled, key = { it.id }) { model ->
                 ModelCard(
@@ -129,6 +130,18 @@ fun AiSetupScreen(viewModel: AiSetupViewModel, modifier: Modifier = Modifier) {
                     onDownload = {}, onCancel = {}, onDismiss = {},
                     onUse = { viewModel.setActive(model.id) },
                     onDelete = { pendingDelete = model.id },
+                )
+            }
+            items(searchDownloads, key = { it.spec.id }) { d ->
+                ModelCard(
+                    spec = d.spec,
+                    installed = null,
+                    isActive = false,
+                    download = d.state,
+                    onDownload = { viewModel.download(d.spec) },
+                    onCancel = { viewModel.cancelDownload(d.spec) },
+                    onDismiss = { viewModel.dismissFailure(d.spec) },
+                    onUse = {}, onDelete = {},
                 )
             }
         }
@@ -265,7 +278,8 @@ private fun CodexCard(viewModel: AiSetupViewModel) {
         Text("Codex (ChatGPT account)", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextPrimary))
         Text(
             "Sign in with your ChatGPT account to let Codex write insights instead of an on-device model. " +
-                "Your sign-in is stored encrypted on this device.",
+                "Your sign-in is stored encrypted on this device. " +
+                "When Codex is the selected backend, the app sends your income, insight amounts, and savings goals to OpenAI.",
             style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
         )
         when (val s = state) {
@@ -389,7 +403,7 @@ fun HuggingFaceSearchScreen(viewModel: AiSetupViewModel, onBack: () -> Unit, mod
                                     spec = spec,
                                     installed = installedById[spec.id],
                                     isActive = active?.id == spec.id,
-                                    download = downloads[spec.id],
+                                    download = downloads[spec.id]?.state,
                                     onDownload = { viewModel.download(spec) },
                                     onCancel = { viewModel.cancelDownload(spec) },
                                     onDismiss = { viewModel.dismissFailure(spec) },

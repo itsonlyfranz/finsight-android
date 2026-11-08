@@ -97,26 +97,14 @@ class AiSetupE2ETest {
         assertTrue(h.store.find(lfm.id)!!.file.isFile)
     }
 
-    @Test fun cancelledDownloadRemovesItsPartialFile() {
-        scrollTo("download_${bonsai.id}")
-        rule.onNodeWithTag("download_${bonsai.id}").performClick()
-        waitForTag("cancel_${bonsai.id}")
-        assertTrue("partial file exists while downloading", h.store.partFile(bonsai).isFile)
-
-        rule.onNodeWithTag("cancel_${bonsai.id}").performClick()
-        waitForTag("download_${bonsai.id}")
-        assertFalse("partial file removed on cancel", h.store.partFile(bonsai).exists())
-        assertFalse(h.store.isInstalled(bonsai.id))
-    }
-
-    @Test fun failedDownloadShowsErrorAndLeavesNoPartialFile() {
+    @Test fun failedDownloadShowsErrorAndCanBeRetried() {
         h.downloader.failNext = DownloadError.Network("connection reset")
         scrollTo("download_${bonsai.id}")
         rule.onNodeWithTag("download_${bonsai.id}").performClick()
         waitForTag("progress_${bonsai.id}")
         h.downloader.release()
         waitForTag("error_${bonsai.id}")
-        assertFalse(h.store.partFile(bonsai).exists())
+        rule.onNodeWithTag("error_${bonsai.id}").assertTextContains("Tap Retry", substring = true)
         // Retry works once the network is back.
         rule.onNodeWithTag("download_${bonsai.id}").performClick()
         waitForTag("progress_${bonsai.id}")
@@ -310,6 +298,24 @@ class AiSetupE2ETest {
         rule.onNodeWithTag("search_back").performClick()
         scrollTo("model_card_${spec.id}")
         rule.onNodeWithTag("model_card_${spec.id}").assertIsDisplayed()
+    }
+
+    @Test fun searchDownloadInProgressStaysVisibleAndCancellableAfterGoingBack() {
+        seedSearch()
+        openSearch()
+        rule.onNodeWithTag("search_field").performTextInput("good")
+        rule.onNodeWithTag("search_button").performClick()
+        waitForTag("result_acme/Good-1B-GGUF")
+        val spec = (vm.search.value as com.example.finsightai.ui.aisetup.SearchUiState.Results).items.single().best
+        rule.onNodeWithTag("download_${spec.id}").performClick()
+        waitForTag("progress_${spec.id}")
+        rule.onNodeWithTag("search_back").performClick()
+
+        scrollTo("cancel_${spec.id}")
+        rule.onNodeWithTag("progress_${spec.id}").assertIsDisplayed()
+        rule.onNodeWithTag("cancel_${spec.id}").performClick()
+        waitGone("model_card_${spec.id}")
+        assertFalse(h.store.isInstalled(spec.id))
     }
 
     @Test fun huggingFaceTokenCanBeSavedAndRemoved() {

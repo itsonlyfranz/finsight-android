@@ -34,6 +34,7 @@ constexpr jint RC_CANCELLED = 5;
 constexpr jint RC_BAD_HANDLE = 6;
 
 constexpr int BATCH_SIZE = 512;
+constexpr int MAX_PENDING_PIECES = 4;
 
 struct Session {
     llama_model *model = nullptr;
@@ -150,7 +151,7 @@ Java_com_example_finsightai_llm_LlamaNative_nativeRelease(JNIEnv *, jobject, jlo
     delete session;
 }
 
-// Generates a reply for (system, user), streaming decoded text pieces to sink.onToken(String): Boolean.
+// Generates a reply for (system, user), streaming UTF-8 text pieces to sink.onToken(byte[]): Boolean.
 // Returning false from the sink cancels generation.
 extern "C" JNIEXPORT jint JNICALL
 Java_com_example_finsightai_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject, jlong handle, jstring jsystem,
@@ -167,7 +168,7 @@ Java_com_example_finsightai_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject,
     env->ReleaseStringUTFChars(juser, user_c);
 
     jclass sink_class = env->GetObjectClass(sink);
-    jmethodID on_token = env->GetMethodID(sink_class, "onToken", "(Ljava/lang/String;)Z");
+    jmethodID on_token = env->GetMethodID(sink_class, "onToken", "([B)Z");
     if (!on_token) return RC_BAD_HANDLE;
 
     // 1. Render the chat template (Jinja) into a prompt string.
@@ -227,6 +228,25 @@ Java_com_example_finsightai_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject,
     // 5. Sample loop.
     const llama_vocab *vocab = llama_model_get_vocab(session->model);
     std::string pending;
+    int pending_pieces = 0;
+    // Hands pending bytes to Kotlin, which decodes them (replacing malformed sequences). False: stop.
+    auto flush = [&]() -> bool {
+        jbyteArray piece = env->NewByteArray((jsize) pending.size());
+        if (!piece) {
+            env->ExceptionClear();
+            return false;
+        }
+        env->SetByteArrayRegion(piece, 0, (jsize) pending.size(), reinterpret_cast<const jbyte *>(pending.data()));
+        const jboolean keep_going = env->CallBooleanMethod(sink, on_token, piece);
+        env->DeleteLocalRef(piece);
+        pending.clear();
+        pending_pieces = 0;
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return false;
+        }
+        return keep_going;
+    };
     int pos = (int) tokens.size();
     for (int produced = 0; rc == RC_OK && produced < budget; ++produced) {
         const llama_token tok = common_sampler_sample(sampler, session->ctx, -1);
@@ -234,20 +254,10 @@ Java_com_example_finsightai_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject,
         if (llama_vocab_is_eog(vocab, tok)) break;
 
         pending += common_token_to_piece(session->ctx, tok);
-        if (is_valid_utf8(pending)) {
-            jstring piece = env->NewStringUTF(pending.c_str());
-            const jboolean keep_going = env->CallBooleanMethod(sink, on_token, piece);
-            env->DeleteLocalRef(piece);
-            pending.clear();
-            if (env->ExceptionCheck()) {
-                env->ExceptionClear();
-                rc = RC_CANCELLED;
-                break;
-            }
-            if (!keep_going) {
-                rc = RC_CANCELLED;
-                break;
-            }
+        ++pending_pieces;
+        if ((is_valid_utf8(pending) || pending_pieces >= MAX_PENDING_PIECES) && !flush()) {
+            rc = RC_CANCELLED;
+            break;
         }
 
         batch.clear();
@@ -256,6 +266,8 @@ Java_com_example_finsightai_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject,
             rc = RC_DECODE_FAILED;
         }
     }
+
+    if (rc == RC_OK && !pending.empty() && !flush()) rc = RC_CANCELLED;
 
     common_sampler_free(sampler);
     return rc;

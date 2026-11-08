@@ -129,7 +129,6 @@ class HttpHfApi(
                     libraryName = o.str("library_name"),
                     pipelineTag = o.str("pipeline_tag"),
                     ggufArchitecture = gguf?.str("architecture"),
-                    contextLength = gguf?.get("context_length")?.jsonPrimitive?.longOrNull,
                     gated = isGated(o["gated"]),
                     downloads = o["downloads"]?.jsonPrimitive?.longOrNull ?: 0,
                     likes = o["likes"]?.jsonPrimitive?.longOrNull ?: 0,

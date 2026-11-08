@@ -28,6 +28,9 @@ sealed interface DownloadError {
     data class DiskFull(val neededBytes: Long, val availableBytes: Long) : DownloadError
     data class SizeMismatch(val expected: Long, val actual: Long) : DownloadError
     data class ChecksumMismatch(val expected: String, val actual: String) : DownloadError
+
+    /** Reading back or saving the finished file failed (e.g. storage filled up while committing). */
+    data class Storage(val detail: String) : DownloadError
 }
 
 sealed interface DownloadState {
@@ -119,29 +122,29 @@ class HttpModelDownloader(
             }
 
             emit(DownloadState.Verifying)
-            val actual = part.length()
-            if (actual != spec.sizeBytes) {
-                part.delete()
-                emit(DownloadState.Failed(DownloadError.SizeMismatch(spec.sizeBytes, actual)))
-                return@flow
+            val outcome = try {
+                verifyAndCommit(spec, part)
+            } catch (e: IOException) {
+                DownloadState.Failed(DownloadError.Storage(e.message ?: "could not save the model"))
             }
-            spec.sha256?.let { expected ->
-                val digest = sha256Of(part)
-                if (!digest.equals(expected, ignoreCase = true)) {
-                    part.delete()
-                    emit(DownloadState.Failed(DownloadError.ChecksumMismatch(expected, digest)))
-                    return@flow
-                }
-            }
-            val installed = store.commit(spec, part)
-            committed = true
-            emit(DownloadState.Completed(installed))
+            committed = outcome is DownloadState.Completed
+            emit(outcome)
         } finally {
             if (!committed) withContext(NonCancellable) { part.delete() }
         }
     }.flowOn(ioDispatcher)
 
     private class DownloadFailure(val error: DownloadError) : Exception()
+
+    private fun verifyAndCommit(spec: ModelSpec, part: File): DownloadState {
+        val actual = part.length()
+        if (actual != spec.sizeBytes) return DownloadState.Failed(DownloadError.SizeMismatch(spec.sizeBytes, actual))
+        spec.sha256?.let { expected ->
+            val digest = sha256Of(part)
+            if (!digest.equals(expected, ignoreCase = true)) return DownloadState.Failed(DownloadError.ChecksumMismatch(expected, digest))
+        }
+        return DownloadState.Completed(store.commit(spec, part))
+    }
 
     /** Streams the remote file into [part], appending from its current length. */
     private suspend fun transfer(spec: ModelSpec, part: File, onProgress: suspend (Long) -> Unit) {
