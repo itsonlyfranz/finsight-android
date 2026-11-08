@@ -311,11 +311,42 @@ private fun CodexCard(viewModel: AiSetupViewModel) {
                     "Signed in" + (s.email?.let { " as $it" } ?: "") + (s.planType?.let { " · $it plan" } ?: ""),
                     modifier = Modifier.testTag("codex_status"), color = BrightEmerald, fontWeight = FontWeight.Bold
                 )
+                CodexModelPicker(viewModel)
                 OutlinedButton(onClick = viewModel::signOutCodex, modifier = Modifier.testTag("codex_sign_out")) { Text("Sign out") }
             }
             is CodexAuthState.Error -> {
                 Text(s.message, modifier = Modifier.testTag("codex_error"), color = CoralRed)
                 Button(onClick = viewModel::startCodexSignIn, modifier = Modifier.testTag("codex_sign_in")) { Text(if (s.retryable) "Try again" else "Sign in again") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodexModelPicker(viewModel: AiSetupViewModel) {
+    val models by viewModel.codexModels.collectAsStateWithLifecycle()
+    val selected by viewModel.codexSelectedModel.collectAsStateWithLifecycle()
+    when (val m = models) {
+        CodexModelsUi.Hidden -> Unit
+        CodexModelsUi.Loading -> LinearProgressIndicator(modifier = Modifier.fillMaxWidth().testTag("codex_models_loading"))
+        CodexModelsUi.Unavailable -> Text(
+            "Could not load your account's models. Codex will try its default models.",
+            modifier = Modifier.testTag("codex_models_error"),
+            style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
+        )
+        is CodexModelsUi.Loaded -> Column {
+            Text("Model", style = MaterialTheme.typography.titleSmall.copy(color = TextPrimary, fontWeight = FontWeight.Bold))
+            m.models.forEach { slug ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .selectable(selected = selected == slug, role = Role.RadioButton, onClick = { viewModel.selectCodexModel(slug) })
+                        .testTag("codex_model_$slug")
+                ) {
+                    RadioButton(selected = selected == slug, onClick = null)
+                    Text(slug, color = TextPrimary)
+                }
             }
         }
     }

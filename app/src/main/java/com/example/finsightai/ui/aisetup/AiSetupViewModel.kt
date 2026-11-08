@@ -22,6 +22,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -39,6 +41,14 @@ sealed interface DownloadUi {
 /** A download the UI is tracking, with the spec so it can be shown outside the screen it started on. */
 data class ActiveDownload(val spec: ModelSpec, val state: DownloadUi)
 
+/** The signed-in account's Codex models, for the picker on the Codex card. */
+sealed interface CodexModelsUi {
+    data object Hidden : CodexModelsUi
+    data object Loading : CodexModelsUi
+    data class Loaded(val models: List<String>) : CodexModelsUi
+    data object Unavailable : CodexModelsUi
+}
+
 sealed interface SearchUiState {
     data object Idle : SearchUiState
     data object Loading : SearchUiState
@@ -53,6 +63,10 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
     val installed: StateFlow<List<InstalledModel>> = services.modelStore.installed
     val activeModel: StateFlow<InstalledModel?> = services.modelStore.activeModel
     val codexState: StateFlow<CodexAuthState> = services.codexAuth.state
+    val codexSelectedModel: StateFlow<String?> = services.codex.selectedModel
+
+    private val _codexModels = MutableStateFlow<CodexModelsUi>(CodexModelsUi.Hidden)
+    val codexModels: StateFlow<CodexModelsUi> = _codexModels.asStateFlow()
 
     private val _effective = MutableStateFlow<EffectiveBackend?>(null)
     val effective: StateFlow<EffectiveBackend?> = _effective.asStateFlow()
@@ -75,6 +89,15 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
     init {
         viewModelScope.launch {
             services.signal.collect { _effective.value = services.router.effective() }
+        }
+        viewModelScope.launch {
+            services.codexAuth.state.map { it is CodexAuthState.SignedIn }.distinctUntilChanged().collect { signedIn ->
+                if (signedIn) {
+                    loadCodexModels()
+                } else {
+                    _codexModels.value = CodexModelsUi.Hidden
+                }
+            }
         }
     }
 
@@ -169,7 +192,23 @@ class AiSetupViewModel(private val services: AiServices) : ViewModel() {
     fun startCodexSignIn() = services.codexAuth.startSignIn()
     fun cancelCodexSignIn() = services.codexAuth.cancelSignIn()
     fun signOutCodex() {
-        viewModelScope.launch { services.codexAuth.signOut() }
+        viewModelScope.launch {
+            services.codexAuth.signOut()
+            services.codex.forget()
+        }
+    }
+
+    private suspend fun loadCodexModels() {
+        _codexModels.value = CodexModelsUi.Loading
+        val models = services.codex.availableModels()
+        _codexModels.value = if (models.isEmpty()) CodexModelsUi.Unavailable else CodexModelsUi.Loaded(models)
+        _effective.value = services.router.effective()
+    }
+
+    /** Takes effect on the next AI request. */
+    fun selectCodexModel(model: String) {
+        services.codex.select(model)
+        viewModelScope.launch { _effective.value = services.router.effective() }
     }
 
     private fun needsToken(error: DownloadError) = error is DownloadError.Unauthorized

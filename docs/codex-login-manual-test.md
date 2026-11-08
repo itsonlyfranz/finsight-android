@@ -18,10 +18,12 @@ FinSight uses the same *device-code* login the Codex CLI offers for headless mac
 3. Tap **Sign in with ChatGPT**. Within a second or two the screen shows a code like `ABCD-1234`, **Open verification page**, and **Copy code**.
 4. Tap **Open verification page** (or visit `auth.openai.com/codex/device`), log in to ChatGPT, enter the code, approve. Return to the app.
 5. Within ~5-10 s (poll interval) the section flips to **Signed in** showing your email and plan (e.g. `plus`).
-6. In AI Setup choose **Codex** as the AI backend.
-7. Open **AI Insights** (and **Simulator** / goal cards). Cards should be marked as written by Codex and the text should differ from the deterministic wording. First answer takes a few seconds.
-8. Kill the app from recents and reopen: still **Signed in** (tokens restored), Codex answers still work.
-9. **Sign out**: state returns to *Signed out*; AI Insights fall back to the built-in (deterministic) text. Reopen the app: still signed out.
+6. Under **Model** the card lists the models your account offers (`GET /backend-api/codex/models`), with the first one selected. If the list cannot be loaded, a short message says Codex will try its default models.
+7. In AI Setup choose **Codex** as the AI backend.
+8. Open **AI Insights** (and **Simulator** / goal cards). Cards should be marked as written by Codex (with the model name) and the text should differ from the deterministic wording. First answer takes a few seconds.
+9. Back in AI Setup pick another model (if your account offers more than one). The next AI refresh is written by that model.
+10. Kill the app from recents and reopen: still **Signed in** (tokens restored), the picked model is still selected, Codex answers still work.
+11. **Sign out**: state returns to *Signed out*; AI Insights fall back to the built-in (deterministic) text. Reopen the app: still signed out. Signing in again starts from the account's first model.
 
 ## Expected results / failure modes
 | What you see | Meaning | What to do |

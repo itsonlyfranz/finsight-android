@@ -7,6 +7,8 @@ import com.example.finsightai.ai.backend.BackendPreferences
 import com.example.finsightai.codex.CodexAuthClient
 import com.example.finsightai.codex.CodexAuthManager
 import com.example.finsightai.codex.CodexAuthState
+import com.example.finsightai.codex.CodexBackend
+import com.example.finsightai.codex.CodexModelPreference
 import com.example.finsightai.codex.CodexTextGenerator
 import com.example.finsightai.llm.ActiveModel
 import com.example.finsightai.llm.HttpModelDownloader
@@ -45,7 +47,8 @@ class AiServices(
     val backendPrefs: BackendPreferences,
     val runtime: OnDeviceRuntime,
     scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
-    codexGenerator: com.example.finsightai.ai.backend.TextGenerator = CodexTextGenerator(codexAuth),
+    /** Codex text generation plus the account model picker shown in AI Setup. */
+    val codex: CodexBackend = CodexTextGenerator(codexAuth),
 ) {
     val onDeviceGenerator = OnDeviceTextGenerator(runtime) {
         modelStore.activeModel.value?.let { ActiveModel(it.id, it.spec.displayName, it.file) }
@@ -53,7 +56,7 @@ class AiServices(
 
     val router = AiBackendRouter(
         backendPrefs.choice,
-        mapOf(BackendChoice.ON_DEVICE to onDeviceGenerator, BackendChoice.CODEX to codexGenerator),
+        mapOf(BackendChoice.ON_DEVICE to onDeviceGenerator, BackendChoice.CODEX to codex),
     )
 
     /** Emits whenever the effective AI backend may have changed (selection, active model, Codex sign-in). */
@@ -91,6 +94,8 @@ class AiServices(
             val hfTokens = HfTokenStore(secrets)
             val prefs = context.getSharedPreferences("finsight_models", Context.MODE_PRIVATE)
             val store = ModelStore(File(context.filesDir, "models"), SharedPreferencesKeyValueStore(prefs))
+            val codexAuth = CodexAuthManager(CodexAuthClient(), secrets)
+            val codexPrefs = SharedPreferencesKeyValueStore(context.getSharedPreferences("finsight_codex", Context.MODE_PRIVATE))
             return AiServices(
                 secrets = secrets,
                 modelStore = store,
@@ -100,9 +105,10 @@ class AiServices(
                     hasToken = { hfTokens.hasToken() },
                 ),
                 hfTokens = hfTokens,
-                codexAuth = CodexAuthManager(CodexAuthClient(), secrets),
+                codexAuth = codexAuth,
                 backendPrefs = BackendPreferences(context),
                 runtime = LlamaCppRuntime(context),
+                codex = CodexTextGenerator(codexAuth, preference = CodexModelPreference(codexPrefs)),
             )
         }
     }

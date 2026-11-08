@@ -88,11 +88,13 @@ class AiFeaturesE2ETest {
         installModel()
         rule.onNodeWithTag("tab_insights").performClick()
         waitUntilGeneratedBy("Written by")
+        assertEquals("the model was loaded to write the insights", lfm.id, h.runtime.loadedModelId)
 
         rule.onNodeWithTag("tab_ai_setup").performClick()
         rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("delete_${lfm.id}"))
         rule.onNodeWithTag("delete_${lfm.id}").performClick()
         rule.onNodeWithTag("confirm_delete").performClick()
+        rule.waitUntil(5_000) { h.runtime.loadedModelId == null && h.runtime.unloads > 0 }
 
         rule.onNodeWithTag("tab_insights").performClick()
         rule.waitUntil(10_000) { count("insight_generated_by_") == 0 }
@@ -113,7 +115,7 @@ class AiFeaturesE2ETest {
         h.codexClient.approved = true
         h.codexAuth.startSignIn()
         rule.waitUntil(10_000) { h.codexAuth.isSignedIn }
-        waitUntilGeneratedBy("Written by Codex (fake)")
+        waitUntilGeneratedBy("Written by Codex (codex-auto-review)")
         rule.onAllNodesWithText("Rewritten by Codex.", substring = true).fetchSemanticsNodes().let { assert(it.isNotEmpty()) }
 
         // Back to on-device.

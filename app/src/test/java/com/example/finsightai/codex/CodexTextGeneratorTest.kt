@@ -30,10 +30,97 @@ class CodexTextGeneratorTest {
             CodexTokens.serializer(), CodexTokens("id", access, refresh, "acct-1", "mark@example.com", "plus", exp)))
     }
 
-    private fun signedInGenerator(models: List<String> = listOf("m-one", "m-two")): CodexTextGenerator {
+    private fun signedInGenerator(
+        models: List<String> = listOf("m-one", "m-two"),
+        preference: CodexModelPreference = CodexModelPreference(com.example.finsightai.llm.InMemoryKeyValueStore()),
+    ): CodexTextGenerator {
         val auth = CodexAuthManager(CodexAuthClient(server.endpoints) { now }, store, clock = { now })
         auth.restore()
-        return CodexTextGenerator(auth, server.endpoints, models)
+        return CodexTextGenerator(auth, server.endpoints, models, preference = preference)
+    }
+
+    private fun serveAccountModels(vararg slugs: String, accepted: (String) -> Boolean = { true }): MutableList<String> {
+        server.on(FakeCodexServer.MODELS) { Reply(200, """{"models":[${slugs.joinToString(",") { "{\"slug\":\"$it\"}" }}]}""") }
+        val tried = java.util.concurrent.CopyOnWriteArrayList<String>()
+        server.on(FakeCodexServer.RESPONSES) { r ->
+            val m = Regex("\"model\":\"([^\"]+)\"").find(r.body)!!.groupValues[1]
+            tried.add(m)
+            if (accepted(m)) Reply(200, sse("from $m"), "text/event-stream")
+            else Reply(400, """{"detail":"The '$m' model is not supported when using Codex with a ChatGPT account."}""")
+        }
+        return tried
+    }
+
+    @Test fun pickerDefaultsToTheAccountsFirstModelAndTheChoiceIsTriedFirst() = runBlocking {
+        val tried = serveAccountModels("acct-a", "acct-b")
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        assertEquals(listOf("acct-a", "acct-b"), gen.availableModels())
+        assertEquals("acct-a", gen.selectedModel.value)
+
+        gen.select("acct-b")
+        val answer = gen.generate(request)
+        assertEquals("from acct-b", answer.text)
+        assertEquals("Codex (acct-b) · mark@example.com", answer.by)
+        assertEquals(listOf("acct-b"), tried)
+        assertEquals("Codex (acct-b) · mark@example.com", gen.describe())
+    }
+
+    @Test fun rejectedChoiceFallsBackToTheRestOfTheListAndReportsTheModelThatAnswered() = runBlocking {
+        val tried = serveAccountModels("acct-a", "acct-b") { it == "acct-a" }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        gen.availableModels()
+        gen.select("acct-b")
+        val answer = gen.generate(request)
+        assertEquals(listOf("acct-b", "acct-a"), tried)
+        assertEquals("Codex (acct-a) · mark@example.com", answer.by)
+    }
+
+    @Test fun choiceSurvivesARestartWithTheSameStorage() = runBlocking {
+        serveAccountModels("acct-a", "acct-b")
+        val kv = com.example.finsightai.llm.InMemoryKeyValueStore()
+        signedInGenerator(preference = CodexModelPreference(kv)).apply { availableModels(); select("acct-b") }
+        val restarted = signedInGenerator(preference = CodexModelPreference(kv))
+        restarted.availableModels()
+        assertEquals("acct-b", restarted.selectedModel.value)
+    }
+
+    @Test fun savedModelTheAccountNoLongerOffersFallsBackToTheFirst() = runBlocking {
+        serveAccountModels("acct-a", "acct-b")
+        val kv = com.example.finsightai.llm.InMemoryKeyValueStore()
+        CodexModelPreference(kv).select("acct-1", "retired")
+        val gen = signedInGenerator(preference = CodexModelPreference(kv))
+        gen.availableModels()
+        assertEquals("acct-a", gen.selectedModel.value)
+        assertEquals("acct-a", CodexModelPreference(kv).resolve("acct-1", emptyList()))
+    }
+
+    @Test fun choiceSavedForAnotherAccountIsIgnored() = runBlocking {
+        serveAccountModels("acct-a", "acct-b")
+        val kv = com.example.finsightai.llm.InMemoryKeyValueStore()
+        CodexModelPreference(kv).select("someone-else", "acct-b")
+        val gen = signedInGenerator(preference = CodexModelPreference(kv))
+        gen.availableModels()
+        assertEquals("acct-a", gen.selectedModel.value)
+    }
+
+    @Test fun forgetOnSignOutResetsToTheFirstModel() = runBlocking {
+        serveAccountModels("acct-a", "acct-b")
+        val kv = com.example.finsightai.llm.InMemoryKeyValueStore()
+        val gen = signedInGenerator(preference = CodexModelPreference(kv))
+        gen.availableModels(); gen.select("acct-b")
+        gen.forget()
+        assertEquals(null, gen.selectedModel.value)
+        gen.availableModels()
+        assertEquals("acct-a", gen.selectedModel.value)
+    }
+
+    @Test fun modelListFailureLeavesThePickerEmptyButGenerationUsesTheDefaults() = runBlocking {
+        server.on(FakeCodexServer.MODELS) { Reply(500, """{"detail":"boom"}""") }
+        server.on(FakeCodexServer.RESPONSES) { Reply(200, sse("default"), "text/event-stream") }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        assertEquals(emptyList<String>(), gen.availableModels())
+        assertEquals(null, gen.selectedModel.value)
+        assertEquals("Codex (${CodexTextGenerator.DEFAULT_MODELS.first()}) · mark@example.com", gen.generate(request).by)
     }
 
     private fun sse(vararg deltas: String) =

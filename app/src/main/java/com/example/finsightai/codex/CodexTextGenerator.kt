@@ -4,6 +4,7 @@ import com.example.finsightai.ai.GeneratedText
 import com.example.finsightai.ai.backend.AiBackendException
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.ai.backend.TextGenerator
+import com.example.finsightai.llm.InMemoryKeyValueStore
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.util.UUID
@@ -30,7 +31,8 @@ import kotlinx.serialization.json.putJsonObject
  * backends took a top-level `instructions` field. We try the CLI's shape first and retry once with
  * the other if the server complains about it.
  *
- * Models are tried in this order: the last one that worked, the models the backend lists for the
+ * Models are tried in this order: the user's choice ([selectedModel], the account's first model
+ * by default), the last one that worked, the rest of the models the backend lists for the
  * signed-in account (`GET /models`, cached per account), then [models] as a fallback.
  */
 class CodexTextGenerator(
@@ -39,7 +41,8 @@ class CodexTextGenerator(
     /** Tried after the account's listed models when the backend rejects a model; the first that works is remembered. */
     private val models: List<String> = DEFAULT_MODELS,
     private val requestTimeoutMillis: Long = 90_000,
-) : TextGenerator {
+    private val preference: CodexModelPreference = CodexModelPreference(InMemoryKeyValueStore()),
+) : CodexBackend {
     override val id: String = "codex"
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -52,7 +55,27 @@ class CodexTextGenerator(
     @Serializable private data class ModelList(val models: List<ModelEntry> = emptyList())
     @Serializable private data class ModelEntry(val slug: String? = null)
 
+    override val selectedModel get() = preference.selected
+
     override suspend fun isReady(): Boolean = auth.isSignedIn
+
+    override suspend fun availableModels(): List<String> {
+        if (!auth.isSignedIn) return emptyList()
+        return try { listedModels() } catch (_: AiBackendException) { emptyList() }
+    }
+
+    override fun select(model: String) {
+        val listed = accountModels ?: return
+        if (model !in listed.slugs) return
+        preference.select(listed.accountId, model)
+        workingModel = null
+    }
+
+    override fun forget() {
+        preference.forget()
+        accountModels = null
+        workingModel = null
+    }
 
     override suspend fun describe(): String? {
         val signedIn = auth.state.value as? CodexAuthState.SignedIn ?: return null
@@ -67,7 +90,8 @@ class CodexTextGenerator(
     override suspend fun generate(request: AiRequest): GeneratedText {
         if (!auth.isSignedIn) throw AiBackendException("Sign in to Codex in AI Setup first.")
         var lastError: AiBackendException? = null
-        val candidates = (listOfNotNull(workingModel) + listedModels() + models).distinct()
+        val listed = listedModels()
+        val candidates = (listOfNotNull(preference.selected.value, workingModel) + listed + models).distinct()
         for (model in candidates) {
             for (useInstructionsField in listOf(false, true)) {
                 try {
@@ -112,15 +136,18 @@ class CodexTextGenerator(
             }
         } catch (e: TimeoutCancellationException) {
             CodexLog.w("codex model list timed out")
+            preference.resolve(creds.accountId, emptyList())
             return emptyList()
         } catch (e: IOException) {
             CodexLog.w("codex model list failed: ${e.javaClass.simpleName}")
+            preference.resolve(creds.accountId, emptyList())
             return emptyList()
         } catch (e: IllegalArgumentException) {
             CodexLog.w("codex model list unreadable")
             null
         }
         accountModels = AccountModels(creds.accountId, slugs.orEmpty(), fetchFailed = slugs == null)
+        preference.resolve(creds.accountId, slugs.orEmpty())
         return slugs.orEmpty()
     }
 

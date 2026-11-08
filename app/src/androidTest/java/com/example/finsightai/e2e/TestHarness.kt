@@ -7,10 +7,11 @@ import com.example.finsightai.ai.GeneratedText
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.ai.backend.BackendChoice
 import com.example.finsightai.ai.backend.BackendPreferences
-import com.example.finsightai.ai.backend.TextGenerator
 import com.example.finsightai.codex.CodexAuthClient
 import com.example.finsightai.codex.CodexAuthManager
 import com.example.finsightai.codex.CodexAuthState
+import com.example.finsightai.codex.CodexBackend
+import com.example.finsightai.codex.CodexModelPreference
 import com.example.finsightai.codex.CodexTokens
 import com.example.finsightai.codex.DeviceApproval
 import com.example.finsightai.codex.DeviceCode
@@ -92,12 +93,25 @@ class FakeRuntime : OnDeviceRuntime {
     override fun systemInfo() = "fake"
 }
 
-class FakeCodexGenerator(private val auth: CodexAuthManager) : TextGenerator {
+/** Codex with the network faked: [models] stands in for the account's `/models` list; the choice logic is real. */
+class FakeCodexGenerator(private val auth: CodexAuthManager, private val preference: CodexModelPreference) : CodexBackend {
+    @Volatile var models: List<String> = listOf("codex-auto-review", "gpt-fake-mini")
     override val id = "codex"
-    override suspend fun describe(): String? = if (auth.isSignedIn) "Codex (fake)" else null
+    override val selectedModel get() = preference.selected
+    private fun account() = (auth.state.value as? CodexAuthState.SignedIn)?.accountId
+    override suspend fun availableModels(): List<String> {
+        if (!auth.isSignedIn) return emptyList()
+        preference.resolve(account(), models)
+        return models
+    }
+    override fun select(model: String) { if (model in models) preference.select(account(), model) }
+    override fun forget() = preference.forget()
+    override suspend fun describe(): String? = if (auth.isSignedIn) "Codex (${preference.selected.value ?: "fake"})" else null
     override suspend fun isReady() = auth.isSignedIn
-    override suspend fun generate(request: AiRequest) =
-        GeneratedText("INSIGHT: Rewritten by Codex.\nACTION: Follow the Codex plan.", "Codex (fake)")
+    override suspend fun generate(request: AiRequest): GeneratedText {
+        availableModels()
+        return GeneratedText("INSIGHT: Rewritten by Codex.\nACTION: Follow the Codex plan.", "Codex (${preference.selected.value})")
+    }
 }
 
 class FakeCodexClient : CodexAuthClient() {
@@ -135,6 +149,8 @@ class TestHarness(
     val codexAuth = CodexAuthManager(codexClient, secrets, pause = { delay(50) })
     val runtime = FakeRuntime()
     val prefs = BackendPreferences(null)
+    val codexSettings = InMemoryKeyValueStore()
+    val codex = FakeCodexGenerator(codexAuth, CodexModelPreference(codexSettings))
     val services = AiServices(
         secrets = secrets,
         modelStore = store,
@@ -146,7 +162,7 @@ class TestHarness(
         codexAuth = codexAuth,
         backendPrefs = prefs,
         runtime = runtime,
-        codexGenerator = FakeCodexGenerator(codexAuth),
+        codex = codex,
     )
 
     fun close() { root.deleteRecursively() }

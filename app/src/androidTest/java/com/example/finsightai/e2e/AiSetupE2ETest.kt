@@ -5,6 +5,8 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -17,6 +19,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.finsightai.ai.backend.BackendChoice
 import com.example.finsightai.codex.CodexAuthState
+import com.example.finsightai.codex.CodexModelPreference
 import com.example.finsightai.llm.CuratedModels
 import com.example.finsightai.llm.DownloadError
 import com.example.finsightai.llm.ModelFamily
@@ -166,8 +169,6 @@ class AiSetupE2ETest {
         rule.waitUntil(5_000) {
             runCatching { rule.onNodeWithTag("effective_status").assertTextStartsWith("Using built-in rules") }.isSuccess
         }
-        // RAM is released once the model is no longer active.
-        rule.waitUntil(5_000) { h.runtime.loadedModelId == null }
     }
 
     // ---- backend switching ----
@@ -207,6 +208,56 @@ class AiSetupE2ETest {
         waitForTag("codex_sign_in")
         assertTrue(h.codexAuth.state.value is CodexAuthState.SignedOut)
         assertNull("tokens wiped from the secret store", h.secrets.get(com.example.finsightai.codex.CodexAuthManager.TOKENS_KEY))
+    }
+
+    private fun signInToCodex() {
+        scrollTo("codex_sign_in")
+        rule.onNodeWithTag("codex_sign_in").performClick()
+        waitForTag("codex_code")
+        h.codexClient.approved = true
+        waitForTag("codex_sign_out", 10_000)
+    }
+
+    @Test fun codexModelPickerDefaultsToFirstModelAndPersistsTheChoice() {
+        signInToCodex()
+        waitForTag("codex_model_codex-auto-review")
+        scrollTo("codex_model_codex-auto-review")
+        rule.onNodeWithTag("codex_model_codex-auto-review").assertIsSelected()
+        rule.onNodeWithTag("codex_model_gpt-fake-mini").assertIsNotSelected()
+
+        rule.onNodeWithTag("codex_model_gpt-fake-mini").performClick()
+        rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag("codex_model_gpt-fake-mini").assertIsSelected() }.isSuccess }
+        // A fresh preference over the same storage (an app restart) keeps the choice.
+        assertEquals("gpt-fake-mini", CodexModelPreference(h.codexSettings).resolve("acct", h.codex.models))
+
+        scrollTo("backend_codex")
+        rule.onNodeWithTag("backend_codex").performClick()
+        rule.waitUntil(5_000) {
+            runCatching { rule.onNodeWithTag("effective_status").assertTextContains("gpt-fake-mini", substring = true) }.isSuccess
+        }
+    }
+
+    @Test fun savedCodexModelThatTheAccountNoLongerOffersFallsBackToTheFirst() {
+        CodexModelPreference(h.codexSettings).select("acct", "retired-model")
+        signInToCodex()
+        waitForTag("codex_model_codex-auto-review")
+        scrollTo("codex_model_codex-auto-review")
+        rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag("codex_model_codex-auto-review").assertIsSelected() }.isSuccess }
+        rule.onAllNodesWithTag("codex_model_retired-model").assertCountEquals(0)
+        assertEquals("codex-auto-review", CodexModelPreference(h.codexSettings).resolve("acct", h.codex.models))
+    }
+
+    @Test fun codexSignOutForgetsTheModelChoice() {
+        signInToCodex()
+        waitForTag("codex_model_gpt-fake-mini")
+        scrollTo("codex_model_gpt-fake-mini")
+        rule.onNodeWithTag("codex_model_gpt-fake-mini").performClick()
+        rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag("codex_model_gpt-fake-mini").assertIsSelected() }.isSuccess }
+        scrollTo("codex_sign_out")
+        rule.onNodeWithTag("codex_sign_out").performClick()
+        waitForTag("codex_sign_in")
+        rule.waitUntil(5_000) { h.codex.selectedModel.value == null }
+        assertEquals("codex-auto-review", CodexModelPreference(h.codexSettings).resolve("acct", h.codex.models))
     }
 
     @Test fun codexSignInCanBeCancelled() {
