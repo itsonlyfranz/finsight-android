@@ -157,26 +157,30 @@ fun AiSetupScreen(viewModel: AiSetupViewModel, modifier: Modifier = Modifier) {
     }
 
     pendingDelete?.let { id ->
-        val model = installedById[id]
-        AlertDialog(
-            modifier = Modifier.testTag("confirm_delete_dialog"),
-            onDismissRequest = { pendingDelete = null },
-            title = { Text("Delete model?") },
-            text = {
-                Text(
-                    "Removes ${model?.spec?.displayName ?: id} (${formatBytes(model?.sizeOnDisk ?: 0L)}) from this device." +
-                        if (active?.id == id) " It is the active model, so FinSight will fall back to built-in rules (or Codex if selected)." else ""
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    modifier = Modifier.testTag("confirm_delete"),
-                    onClick = { viewModel.delete(id); pendingDelete = null }
-                ) { Text("Delete", color = CoralRed) }
-            },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("Keep") } }
-        )
+        ConfirmDeleteDialog(id, installedById[id], isActive = active?.id == id, viewModel = viewModel, onClose = { pendingDelete = null })
     }
+}
+
+@Composable
+private fun ConfirmDeleteDialog(id: String, model: InstalledModel?, isActive: Boolean, viewModel: AiSetupViewModel, onClose: () -> Unit) {
+    AlertDialog(
+        modifier = Modifier.testTag("confirm_delete_dialog"),
+        onDismissRequest = onClose,
+        title = { Text("Delete model?") },
+        text = {
+            Text(
+                "Removes ${model?.spec?.displayName ?: id} (${formatBytes(model?.sizeOnDisk ?: 0L)}) from this device." +
+                    if (isActive) " It is the active model, so FinSight will fall back to built-in rules (or Codex if selected)." else ""
+            )
+        },
+        confirmButton = {
+            TextButton(
+                modifier = Modifier.testTag("confirm_delete"),
+                onClick = { viewModel.delete(id); onClose() }
+            ) { Text("Delete", color = CoralRed) }
+        },
+        dismissButton = { TextButton(onClick = onClose) { Text("Keep") } }
+    )
 }
 
 private fun CuratedModels.byFamilyGrouped(): List<Pair<ModelFamily, List<ModelSpec>>> =
@@ -339,6 +343,7 @@ fun HuggingFaceSearchScreen(viewModel: AiSetupViewModel, onBack: () -> Unit, mod
     val active by viewModel.activeModel.collectAsStateWithLifecycle()
     val hasToken by viewModel.hasHfToken.collectAsStateWithLifecycle()
     val installedById = installed.associateBy { it.id }
+    var pendingDelete by rememberSaveable { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().testTag("hf_search_list"),
@@ -408,7 +413,7 @@ fun HuggingFaceSearchScreen(viewModel: AiSetupViewModel, onBack: () -> Unit, mod
                                     onCancel = { viewModel.cancelDownload(spec) },
                                     onDismiss = { viewModel.dismissFailure(spec) },
                                     onUse = { viewModel.setActive(spec.id) },
-                                    onDelete = { viewModel.delete(spec.id) },
+                                    onDelete = { pendingDelete = spec.id },
                                 )
                             }
                         }
@@ -417,6 +422,10 @@ fun HuggingFaceSearchScreen(viewModel: AiSetupViewModel, onBack: () -> Unit, mod
             }
         }
         item { Spacer(Modifier.height(24.dp)) }
+    }
+
+    pendingDelete?.let { id ->
+        ConfirmDeleteDialog(id, installedById[id], isActive = active?.id == id, viewModel = viewModel, onClose = { pendingDelete = null })
     }
 }
 

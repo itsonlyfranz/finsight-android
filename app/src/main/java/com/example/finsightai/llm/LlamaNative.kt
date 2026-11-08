@@ -41,8 +41,8 @@ internal object LlamaNative {
     external fun nativeRelease(handle: Long)
     external fun nativeGenerate(
         handle: Long,
-        system: String,
-        user: String,
+        system: ByteArray,
+        user: ByteArray,
         maxTokens: Int,
         temperature: Float,
         sink: TokenSink,

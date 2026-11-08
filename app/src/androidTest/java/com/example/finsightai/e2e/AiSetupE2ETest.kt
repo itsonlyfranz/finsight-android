@@ -300,6 +300,28 @@ class AiSetupE2ETest {
         rule.onNodeWithTag("model_card_${spec.id}").assertIsDisplayed()
     }
 
+    @Test fun deletingFromSearchAsksForConfirmationFirst() {
+        seedSearch()
+        openSearch()
+        rule.onNodeWithTag("search_field").performTextInput("good")
+        rule.onNodeWithTag("search_button").performClick()
+        waitForTag("result_acme/Good-1B-GGUF")
+        val spec = (vm.search.value as com.example.finsightai.ui.aisetup.SearchUiState.Results).items.single().best
+        rule.onNodeWithTag("download_${spec.id}").performClick()
+        waitForTag("progress_${spec.id}")
+        h.downloader.release()
+        waitForTag("delete_${spec.id}")
+        val file = h.store.find(spec.id)!!.file
+
+        rule.onNodeWithTag("delete_${spec.id}").performClick()
+        waitForTag("confirm_delete_dialog")
+        assertTrue("nothing is deleted before confirming", file.isFile)
+        rule.onNodeWithTag("confirm_delete").performClick()
+        waitGone("installed_size_${spec.id}")
+        assertFalse(file.exists())
+        assertFalse(h.store.isInstalled(spec.id))
+    }
+
     @Test fun searchDownloadInProgressStaysVisibleAndCancellableAfterGoingBack() {
         seedSearch()
         openSearch()

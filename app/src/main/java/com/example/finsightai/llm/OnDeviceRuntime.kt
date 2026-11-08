@@ -76,8 +76,8 @@ class LlamaCppRuntime(context: Context) : OnDeviceRuntime {
             val job = currentCoroutineContext()
             val rc = LlamaNative.nativeGenerate(
                 current,
-                request.system,
-                request.user,
+                request.system.toByteArray(Charsets.UTF_8),
+                request.user.toByteArray(Charsets.UTF_8),
                 request.maxTokens,
                 request.temperature,
                 TokenSink { bytes ->

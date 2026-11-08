@@ -76,6 +76,12 @@ bool is_valid_utf8(const std::string &s) {
     return true;
 }
 
+std::string utf8_from(JNIEnv *env, jbyteArray bytes) {
+    std::string out((size_t) env->GetArrayLength(bytes), '\0');
+    env->GetByteArrayRegion(bytes, 0, (jsize) out.size(), reinterpret_cast<jbyte *>(&out[0]));
+    return out;
+}
+
 int pick_threads() {
     const int cores = (int) sysconf(_SC_NPROCESSORS_ONLN);
     return std::max(2, std::min(6, cores - 2));
@@ -154,18 +160,14 @@ Java_com_example_finsightai_llm_LlamaNative_nativeRelease(JNIEnv *, jobject, jlo
 // Generates a reply for (system, user), streaming UTF-8 text pieces to sink.onToken(byte[]): Boolean.
 // Returning false from the sink cancels generation.
 extern "C" JNIEXPORT jint JNICALL
-Java_com_example_finsightai_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject, jlong handle, jstring jsystem,
-                                                           jstring juser, jint max_tokens, jfloat temperature,
+Java_com_example_finsightai_llm_LlamaNative_nativeGenerate(JNIEnv *env, jobject, jlong handle, jbyteArray jsystem,
+                                                           jbyteArray juser, jint max_tokens, jfloat temperature,
                                                            jobject sink) {
     auto *session = reinterpret_cast<Session *>(handle);
     if (!session || !session->ctx) return RC_BAD_HANDLE;
 
-    const char *system_c = env->GetStringUTFChars(jsystem, nullptr);
-    const char *user_c = env->GetStringUTFChars(juser, nullptr);
-    std::string system_text(system_c);
-    std::string user_text(user_c);
-    env->ReleaseStringUTFChars(jsystem, system_c);
-    env->ReleaseStringUTFChars(juser, user_c);
+    const std::string system_text = utf8_from(env, jsystem);
+    const std::string user_text = utf8_from(env, juser);
 
     jclass sink_class = env->GetObjectClass(sink);
     jmethodID on_token = env->GetMethodID(sink_class, "onToken", "([B)Z");
