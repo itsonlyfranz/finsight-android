@@ -61,6 +61,7 @@ class CodexTextGenerator(
 
     override suspend fun availableModels(): List<String> {
         if (!auth.isSignedIn) return emptyList()
+        if (accountModels?.let { it.fetchFailed || it.slugs.isEmpty() } == true) accountModels = null
         return try { listedModels() } catch (_: AiBackendException) { emptyList() }
     }
 

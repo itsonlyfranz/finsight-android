@@ -10,6 +10,7 @@ import com.example.finsightai.codex.CodexAuthState
 import com.example.finsightai.codex.CodexBackend
 import com.example.finsightai.codex.CodexModelPreference
 import com.example.finsightai.codex.CodexTextGenerator
+import com.example.finsightai.codex.modelSwitches
 import com.example.finsightai.llm.ActiveModel
 import com.example.finsightai.llm.HttpModelDownloader
 import com.example.finsightai.llm.LlamaCppRuntime
@@ -64,9 +65,9 @@ class AiServices(
         backendPrefs.choice,
         modelStore.activeModel.map { it?.id },
         codexAuth.state.map { it is CodexAuthState.SignedIn },
-        codex.selectedModel,
-    ) { choice, model, signedIn, codexModel ->
-        listOf(choice, model, signedIn, codexModel.takeIf { choice == BackendChoice.CODEX })
+        codex.selectedModel.modelSwitches(),
+    ) { choice, model, signedIn, codexSwitches ->
+        listOf(choice, model, signedIn, codexSwitches.takeIf { choice == BackendChoice.CODEX })
     }.distinctUntilChanged()
 
     init {

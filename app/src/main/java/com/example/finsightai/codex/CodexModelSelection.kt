@@ -2,16 +2,20 @@ package com.example.finsightai.codex
 
 import com.example.finsightai.ai.backend.TextGenerator
 import com.example.finsightai.llm.KeyValueStore
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.scan
 
 /** Lets the user choose which of their ChatGPT account's Codex models writes the insights. */
 interface CodexModelSelection {
     /** The model tried first for the signed-in account; null until the account's list was resolved. */
     val selectedModel: StateFlow<String?>
 
-    /** The account's models in server order; empty when signed out or the list cannot be loaded. */
+    /** The account's models in server order; empty when signed out or the list cannot be loaded (asked again next time). */
     suspend fun availableModels(): List<String>
 
     /** Makes [model] (one of [availableModels]) the first choice for the next request. */
@@ -20,6 +24,15 @@ interface CodexModelSelection {
     /** Drops the saved choice, e.g. on sign-out. */
     fun forget()
 }
+
+/**
+ * Counts switches from one chosen model to a different one. Resolving the first model (null to a
+ * model) or clearing it does not count, so only a real change of model restarts the AI work.
+ */
+fun Flow<String?>.modelSwitches(): Flow<Int> =
+    scan(0 to null as String?) { (switches, previous), model ->
+        (if (previous != null && model != null && model != previous) switches + 1 else switches) to model
+    }.map { it.first }.distinctUntilChanged()
 
 /** The Codex backend as the app wires it: a text generator whose model the user can pick. */
 interface CodexBackend : TextGenerator, CodexModelSelection

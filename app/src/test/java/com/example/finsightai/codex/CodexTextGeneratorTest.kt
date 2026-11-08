@@ -114,6 +114,21 @@ class CodexTextGeneratorTest {
         assertEquals("acct-a", gen.selectedModel.value)
     }
 
+    @Test fun pickerAsksForAListThatFailedToLoadAgainWhileGenerationKeepsTheSavedFailure() = runBlocking {
+        val listCalls = AtomicInteger()
+        server.on(FakeCodexServer.MODELS) {
+            if (listCalls.incrementAndGet() == 1) Reply(500, """{"detail":"boom"}""")
+            else Reply(200, """{"models":[{"slug":"acct-a"}]}""")
+        }
+        server.on(FakeCodexServer.RESPONSES) { Reply(200, sse("default"), "text/event-stream") }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        assertEquals(emptyList<String>(), gen.availableModels())
+        gen.generate(request)
+        assertEquals("generation does not refetch a failed list", 1, listCalls.get())
+        assertEquals(listOf("acct-a"), gen.availableModels())
+        assertEquals("acct-a", gen.selectedModel.value)
+    }
+
     @Test fun modelListFailureLeavesThePickerEmptyButGenerationUsesTheDefaults() = runBlocking {
         server.on(FakeCodexServer.MODELS) { Reply(500, """{"detail":"boom"}""") }
         server.on(FakeCodexServer.RESPONSES) { Reply(200, sse("default"), "text/event-stream") }
