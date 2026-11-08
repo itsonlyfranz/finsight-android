@@ -67,6 +67,15 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 - **Cyber Slate** (High-contrast tech violet)
 - **Midnight Blue** (Deep ocean navy & cyan)
 
+### 6. Generative AI backends (optional, on top of the rules engine)
+The deterministic engines above always compute the numbers and the default wording. In the **AI Setup** tab you can additionally let a language model *re-phrase* the nudges, the simulator explanation and each goal's milestone context:
+- **On-device models** (llama.cpp, offline after download): Gemma 4 E2B, Bonsai (1-bit 1.7B, ternary 2B) and LFM 3 1.7B, all GGUF. Each card shows download size, RAM guidance, an installed-size line, **Use this model** and **Delete** (removes the files; deleting the active model falls back to the rules, or to Codex if selected). Downloads show progress, resume after a dropped connection, and cancelled/failed downloads remove their partial file.
+- **Hugging Face search**: finds more GGUF models, showing *only* those this app can run (supported architecture and quantization, one file up to 4 GB, no vision projectors / split / full-precision files). Optional Hugging Face token for gated repos, stored encrypted.
+- **Codex (ChatGPT account)**: sign in with the OpenAI device-code flow used by the Codex CLI; see [docs/codex-login-manual-test.md](docs/codex-login-manual-test.md).
+- A guard rejects any model output that mentions a dollar figure not present in the engine's facts, and any failure falls back to the rules text. Verified model repos/files/sizes: [docs/model-catalog-verification.md](docs/model-catalog-verification.md).
+
+Build note: the on-device runtime is native code (llama.cpp **v0.9.0**, fetched by CMake at build time, arm64-v8a only). Building needs the Android NDK `28.2.13676358` and CMake `3.31.6` (`sdkmanager "ndk;28.2.13676358" "cmake;3.31.6"`) and network access to GitHub on the first build.
+
 ---
 
 ## 🧪 Testing & Verification
@@ -74,13 +83,20 @@ All unit tests run via Gradle test runner:
 ```bash
 ./gradlew testDebugUnitTest
 ```
-- **32 unit tests passing** (0 failures, 0 errors):
+- **140 JVM unit tests passing** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original 32 are:
   - `AiInsightsEngineTest`: 6 tests
   - `ForwardSimulatorEngineTest`: 7 tests
   - `FinSightRepositoryTest`: 9 tests
   - `FinSightViewModelTest`: 6 tests
   - `CsvExporterTest`: 2 tests
   - `MainScreenViewModelTest`: 2 tests
+
+Instrumented (emulator or device, arm64) UI and on-device tests, with the network and native runtime faked where noted:
+```bash
+./gradlew connectedDebugAndroidTest
+# optional real-model inference test: push any small GGUF first
+adb push Bonsai-1.7B-Q1_0.gguf /data/local/tmp/finsight-smoke.gguf
+```
 
 ---
 

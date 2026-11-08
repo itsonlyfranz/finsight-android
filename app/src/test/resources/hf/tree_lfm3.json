@@ -1,0 +1,90 @@
+[
+ {
+  "type": "file",
+  "oid": "5310c907afb84069df2b781e62b300ce9d271c9e",
+  "size": 3466626336,
+  "lfs": {
+   "oid": "39158a79f56edb85e0c4252ce6447b8d7883ef82ffedd02f0cda7c84da5e9f68",
+   "size": 3466626336,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-BF16.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "21a4b74864d9e62434318351d2a440b6570b0f7a",
+  "size": 3466626336,
+  "lfs": {
+   "oid": "b7ab8b69a85e4dfbf62cdfd0e02d7d051ed09f2c5b84c701771dddb073b85970",
+   "size": 3466626336,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-F16.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "7cef402894b0d8e66eb18b34b968eca018ff7025",
+  "size": 1280019776,
+  "lfs": {
+   "oid": "462c2379586a45b30fe3dbfa30e6ff08cbb440734d6934689e24e4fe59a67bec",
+   "size": 1280019776,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-NVFP4.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "afe02e884b9cff9beda50fd0c3237e2697554d98",
+  "size": 1099627808,
+  "lfs": {
+   "oid": "3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4",
+   "size": 1099627808,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-Q4_K_M.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "d9c639c2f9c27140392f925615dee4725a267785",
+  "size": 1258663200,
+  "lfs": {
+   "oid": "41e51fb0be5f472d323055f2734d986d5a2429570973508fa6322f3f07f6d7f3",
+   "size": 1258663200,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-Q5_K_M.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "a3c142f731a1768fda35c983754d944cf8b893d1",
+  "size": 1427638304,
+  "lfs": {
+   "oid": "54e1bd947c77167823d45bf495f1c3e2d226ca7fb242f83cfa141ee3a6ab55c6",
+   "size": 1427638304,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-Q6_K.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "f04c114215e045cf93ab9b838fa99c1ff8cb0d8a",
+  "size": 1846238496,
+  "lfs": {
+   "oid": "8f6b24182258205e9e01e21f1f24a1f208c1e8115578825d202ce39976af20b6",
+   "size": 1846238496,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-Q8_0.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "394768bfbb4af027284445ec6acec1af91655bfa",
+  "size": 1049615680,
+  "lfs": {
+   "oid": "43a7d09a0e9cba91b63eb7052488b9564569bddfd65754d2e426465e572a7452",
+   "size": 1049615680,
+   "pointerSize": 135
+  },
+  "path": "LFM3-1.7B-QAD-Q4_0.gguf"
+ }
+]

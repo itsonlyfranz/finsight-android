@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ReceiptLong
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -37,6 +39,8 @@ import com.example.finsightai.theme.SlateBorder
 import com.example.finsightai.theme.SlateSurface
 import com.example.finsightai.theme.TextMuted
 import com.example.finsightai.theme.TextSecondary
+import com.example.finsightai.ui.aisetup.AiSetupScreen
+import com.example.finsightai.ui.aisetup.AiSetupViewModel
 import com.example.finsightai.ui.screens.AiInsightsScreen
 import com.example.finsightai.ui.screens.DashboardScreen
 import com.example.finsightai.ui.screens.ForwardSimulatorScreen
@@ -51,14 +55,16 @@ enum class FinSightTab(
     DASHBOARD("Dashboard", Icons.Filled.Dashboard),
     TRANSACTIONS("Transactions", Icons.AutoMirrored.Filled.ReceiptLong),
     INSIGHTS("AI Insights", Icons.Filled.AutoAwesome),
-    SIMULATOR("Simulator", Icons.Filled.Timeline)
+    SIMULATOR("Simulator", Icons.Filled.Timeline),
+    AI_SETUP("AI Setup", Icons.Filled.Memory)
 }
 
 @Composable
 fun MainNavigation(
     viewModel: FinSightViewModel = viewModel(
         factory = FinSightViewModel.factory(LocalContext.current.applicationContext)
-    )
+    ),
+    aiSetupViewModel: AiSetupViewModel? = null
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(FinSightTab.DASHBOARD) }
 
@@ -79,6 +85,7 @@ fun MainNavigation(
 
                     NavigationBarItem(
                         selected = isSelected,
+                        modifier = Modifier.testTag("tab_${tab.name.lowercase()}"),
                         onClick = { selectedTab = tab },
                         icon = {
                             Icon(
@@ -126,6 +133,11 @@ fun MainNavigation(
                 )
                 FinSightTab.SIMULATOR -> ForwardSimulatorScreen(
                     viewModel = viewModel
+                )
+                FinSightTab.AI_SETUP -> AiSetupScreen(
+                    viewModel = aiSetupViewModel ?: viewModel(
+                        factory = AiSetupViewModel.factory(LocalContext.current.applicationContext)
+                    )
                 )
             }
         }
