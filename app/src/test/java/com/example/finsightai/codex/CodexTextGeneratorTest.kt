@@ -48,7 +48,7 @@ class CodexTextGeneratorTest {
         assertTrue(gen.isReady())
         assertEquals("Cut cafes by 20%", gen.generate(request))
 
-        val req = server.requests.single()
+        val req = server.requests.single { it.path == FakeCodexServer.RESPONSES }
         assertEquals("Bearer tok-1", req.headers["authorization"])
         assertEquals("acct-1", req.headers["chatgpt-account-id"])
         assertEquals("codex_cli_rs", req.headers["originator"])
@@ -127,6 +127,42 @@ class CodexTextGeneratorTest {
         assertEquals("hi", gen.generate(request))
         assertEquals(listOf("m-one", "m-two", "m-two"), models)
         assertTrue(gen.describe()!!.contains("m-two"))
+    }
+
+    private fun modelOf(r: Recorded) = Regex("\"model\":\"([^\"]+)\"").find(r.body)!!.groupValues[1]
+
+    @Test fun accountModelListIsTriedFirstAndCachedPerSignIn() = runBlocking {
+        server.on(FakeCodexServer.MODELS) { Reply(200, """{"models":[{"slug":"codex-auto-review","display_name":"Auto","priority":1}],"etag":"x"}""") }
+        val tried = mutableListOf<String>()
+        server.on(FakeCodexServer.RESPONSES) { r ->
+            val m = modelOf(r)
+            tried.add(m)
+            if (m == "codex-auto-review") Reply(200, sse("listed"), "text/event-stream")
+            else Reply(400, """{"detail":"The '$m' model is not supported when using Codex with a ChatGPT account."}""")
+        }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        assertEquals("listed", gen.generate(request))
+        assertEquals("listed", gen.generate(request))
+        assertEquals(listOf("codex-auto-review", "codex-auto-review"), tried)
+        assertEquals(1, server.count(FakeCodexServer.MODELS))
+        val list = server.requests.first { it.path == FakeCodexServer.MODELS }
+        assertEquals("Bearer tok-1", list.headers["authorization"])
+        assertEquals("acct-1", list.headers["chatgpt-account-id"])
+        assertEquals("codex_cli_rs", list.headers["originator"])
+        assertEquals("Codex (codex-auto-review) · mark@example.com", gen.describe())
+    }
+
+    @Test fun failingModelListFallsBackToDefaultModels() = runBlocking {
+        server.on(FakeCodexServer.MODELS) { Reply(500, """{"detail":"boom"}""") }
+        val tried = mutableListOf<String>()
+        server.on(FakeCodexServer.RESPONSES) { r ->
+            tried.add(modelOf(r))
+            Reply(200, sse("default"), "text/event-stream")
+        }
+        val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
+        assertEquals("default", gen.generate(request))
+        assertEquals(listOf(CodexTextGenerator.DEFAULT_MODELS.first()), tried)
+        assertEquals("Codex (${CodexTextGenerator.DEFAULT_MODELS.first()}) · mark@example.com", gen.describe())
     }
 
     @Test fun streamedErrorEventBecomesBackendException() = runBlocking {

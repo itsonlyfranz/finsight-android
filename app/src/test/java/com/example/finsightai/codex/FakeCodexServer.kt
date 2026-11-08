@@ -62,6 +62,7 @@ class FakeCodexServer : AutoCloseable {
         const val DEVICE_TOKEN = "/api/accounts/deviceauth/token"
         const val OAUTH_TOKEN = "/oauth/token"
         const val RESPONSES = "/backend/responses"
+        const val MODELS = "/backend/models"
     }
 }
 

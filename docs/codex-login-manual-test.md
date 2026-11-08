@@ -35,7 +35,7 @@ FinSight uses the same *device-code* login the Codex CLI offers for headless mac
 | "Codex rejected the saved sign-in. Sign in again..." | 401 even after a refresh | Sign out, sign in |
 | "Codex access was refused (HTTP 403). Your ChatGPT plan or region may not include Codex." | Plan/region/workspace policy, or a Cloudflare/originator block | Check the account has Codex access (try `codex` CLI with the same account) |
 | "Codex usage limit reached." | HTTP 429, plan limits | Wait |
-| "Codex does not offer this model for your account: ..." | Both candidate models (`gpt-5.5`, `gpt-6.1-terra`) rejected | Capture logs; model slugs come from the CLI's bundled `models.json` and may need updating (`CodexTextGenerator.DEFAULT_MODELS`) |
+| "Codex does not offer this model for your account: ..." | Every model the account lists (`GET /backend-api/codex/models`) and both fallback models (`gpt-5.5`, `gpt-6.1-terra`) rejected | Capture logs; check the account's model list and the fallback slugs in `CodexTextGenerator.DEFAULT_MODELS` |
 | "Codex rejected the request: ... instructions ..." | Backend wanted a different system-prompt shape; the app already retries once with the other shape, so seeing this means both failed | Capture logs |
 | AI cards stay on built-in wording although Codex is selected | Codex call failed and the app fell back (by design) | Look at the AI Setup status line / logcat |
 

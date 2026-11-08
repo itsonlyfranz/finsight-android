@@ -8,6 +8,7 @@ import java.net.SocketTimeoutException
 import java.util.UUID
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -27,11 +28,14 @@ import kotlinx.serialization.json.putJsonObject
  * The current Codex CLI sends the system prompt as a `developer` message inside `input`; older
  * backends took a top-level `instructions` field. We try the CLI's shape first and retry once with
  * the other if the server complains about it.
+ *
+ * Models are tried in this order: the last one that worked, the models the backend lists for the
+ * signed-in account (`GET /models`, cached per account), then [models] as a fallback.
  */
 class CodexTextGenerator(
     private val auth: CodexAuthManager,
     private val endpoints: CodexEndpoints = CodexEndpoints(),
-    /** Tried in order when the backend rejects a model; the first that works is remembered. */
+    /** Tried after the account's listed models when the backend rejects a model; the first that works is remembered. */
     private val models: List<String> = DEFAULT_MODELS,
     private val requestTimeoutMillis: Long = 90_000,
 ) : TextGenerator {
@@ -40,19 +44,25 @@ class CodexTextGenerator(
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val sessionId = UUID.randomUUID().toString()
     @Volatile private var workingModel: String? = null
+    @Volatile private var accountModels: AccountModels? = null
+
+    private class AccountModels(val accountId: String?, val slugs: List<String>)
+
+    @Serializable private data class ModelList(val models: List<ModelEntry> = emptyList())
+    @Serializable private data class ModelEntry(val slug: String? = null)
 
     override suspend fun isReady(): Boolean = auth.isSignedIn
 
     override suspend fun describe(): String? {
         val signedIn = auth.state.value as? CodexAuthState.SignedIn ?: return null
         val who = signedIn.email ?: signedIn.planType ?: "ChatGPT"
-        return "Codex (${workingModel ?: models.first()}) · $who"
+        return "Codex (${workingModel ?: accountModels?.slugs?.firstOrNull() ?: models.first()}) · $who"
     }
 
     override suspend fun generate(request: AiRequest): String {
         if (!auth.isSignedIn) throw AiBackendException("Sign in to Codex in AI Setup first.")
         var lastError: AiBackendException? = null
-        val candidates = listOfNotNull(workingModel) + models.filter { it != workingModel }
+        val candidates = (listOfNotNull(workingModel) + listedModels() + models).distinct()
         for (model in candidates) {
             for (useInstructionsField in listOf(false, true)) {
                 try {
@@ -68,6 +78,43 @@ class CodexTextGenerator(
             }
         }
         throw lastError ?: AiBackendException("Codex did not return an answer.")
+    }
+
+    /** The account's model slugs in server order; empty (and not cached) when the list is unavailable. */
+    private suspend fun listedModels(): List<String> {
+        val creds = try { auth.validAccessToken() } catch (e: CodexAuthException) { throw e.asBackend() }
+        val cached = accountModels
+        if (cached != null) {
+            if (cached.accountId == creds.accountId) return cached.slugs
+            accountModels = null
+            workingModel = null
+        }
+        val headers = buildMap {
+            put("Authorization", "Bearer ${creds.accessToken}")
+            creds.accountId?.let { put("chatgpt-account-id", it) }
+            put("originator", endpoints.originator)
+            put("User-Agent", endpoints.userAgent)
+            put("Accept", "application/json")
+        }
+        val slugs = try {
+            val result = withTimeout(requestTimeoutMillis) { CodexHttp.send(endpoints.modelsUrl, "GET", headers, null) }
+            if (result.status !in 200..299) {
+                CodexLog.w("codex model list unavailable (HTTP ${result.status})")
+                return emptyList()
+            }
+            json.decodeFromString(ModelList.serializer(), result.body).models.mapNotNull { it.slug?.takeIf(String::isNotBlank) }
+        } catch (e: TimeoutCancellationException) {
+            CodexLog.w("codex model list timed out")
+            return emptyList()
+        } catch (e: IOException) {
+            CodexLog.w("codex model list failed: ${e.javaClass.simpleName}")
+            return emptyList()
+        } catch (e: IllegalArgumentException) {
+            CodexLog.w("codex model list unreadable")
+            return emptyList()
+        }
+        accountModels = AccountModels(creds.accountId, slugs)
+        return slugs
     }
 
     private suspend fun attempt(request: AiRequest, model: String, useInstructionsField: Boolean): String {

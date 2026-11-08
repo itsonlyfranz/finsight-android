@@ -13,6 +13,8 @@ data class CodexEndpoints(
     /** Sent as the `originator` header, as the Codex CLI does. */
     val originator: String = "codex_cli_rs",
     val userAgent: String = "FinSight-Android/1.0 (codex-login)",
+    /** Sent as `client_version` when listing the models the signed-in account may use. */
+    val clientVersion: String = "0.130.0",
 ) {
     val deviceUserCodeUrl: String get() = "${issuer.trimEnd('/')}/api/accounts/deviceauth/usercode"
     val deviceTokenUrl: String get() = "${issuer.trimEnd('/')}/api/accounts/deviceauth/token"
@@ -20,6 +22,7 @@ data class CodexEndpoints(
     val deviceRedirectUri: String get() = "${issuer.trimEnd('/')}/deviceauth/callback"
     val verificationUrl: String get() = "${issuer.trimEnd('/')}/codex/device"
     val responsesUrl: String get() = "${backendBaseUrl.trimEnd('/')}/responses"
+    val modelsUrl: String get() = "${backendBaseUrl.trimEnd('/')}/models?client_version=$clientVersion"
 }
 
 /** Logging that never carries token or code material. Safe on the JVM (unit tests). */
