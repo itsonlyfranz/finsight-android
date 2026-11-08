@@ -1,6 +1,7 @@
 package com.example.finsightai.llm
 
 import android.content.Context
+import com.example.finsightai.ai.GeneratedText
 import com.example.finsightai.ai.backend.AiBackendException
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.ai.backend.TextGenerator
@@ -132,9 +133,9 @@ class OnDeviceTextGenerator(
 
     override suspend fun isReady(): Boolean = runtime.isSupported && activeModel()?.file?.isFile == true
 
-    override suspend fun generate(request: AiRequest): String {
+    override suspend fun generate(request: AiRequest): GeneratedText {
         val model = activeModel() ?: throw AiBackendException("No on-device model is selected")
         runtime.load(model.id, model.file)
-        return runtime.generate(request)
+        return GeneratedText(runtime.generate(request), model.displayName)
     }
 }

@@ -1,5 +1,7 @@
 package com.example.finsightai.ai.backend
 
+import com.example.finsightai.ai.GeneratedText
+
 /** Which generative backend the user chose for AI features. The deterministic engines are always the fallback. */
 enum class BackendChoice(val label: String) {
     ON_DEVICE("On-device model"),
@@ -31,5 +33,6 @@ interface TextGenerator {
     /** True when [generate] can be expected to work right now (model installed / signed in). */
     suspend fun isReady(): Boolean
 
-    suspend fun generate(request: AiRequest): String
+    /** The text plus a label naming what actually produced it (e.g. the model that answered). */
+    suspend fun generate(request: AiRequest): GeneratedText
 }

@@ -3,6 +3,7 @@ package com.example.finsightai.e2e
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.finsightai.AiServices
+import com.example.finsightai.ai.GeneratedText
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.ai.backend.BackendChoice
 import com.example.finsightai.ai.backend.BackendPreferences
@@ -95,7 +96,8 @@ class FakeCodexGenerator(private val auth: CodexAuthManager) : TextGenerator {
     override val id = "codex"
     override suspend fun describe(): String? = if (auth.isSignedIn) "Codex (fake)" else null
     override suspend fun isReady() = auth.isSignedIn
-    override suspend fun generate(request: AiRequest) = "INSIGHT: Rewritten by Codex.\nACTION: Follow the Codex plan."
+    override suspend fun generate(request: AiRequest) =
+        GeneratedText("INSIGHT: Rewritten by Codex.\nACTION: Follow the Codex plan.", "Codex (fake)")
 }
 
 class FakeCodexClient : CodexAuthClient() {

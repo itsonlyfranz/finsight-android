@@ -127,9 +127,11 @@ fun AiInsightsScreen(
                         text = "Real-time behavioral nudges & wealth accelerators",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
+                    val writtenBy = insights.firstNotNullOfOrNull { it.generatedBy }
                     val statusLine = when {
                         aiStatus.working -> "Rewriting with ${aiStatus.backendLabel}…"
-                        aiStatus.backendLabel != null -> "Written by ${aiStatus.backendLabel}"
+                        writtenBy != null -> "Written by $writtenBy"
+                        aiStatus.backendLabel != null -> "Using ${aiStatus.backendLabel}"
                         else -> null
                     }
                     if (statusLine != null) {

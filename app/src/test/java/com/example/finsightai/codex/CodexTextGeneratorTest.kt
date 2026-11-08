@@ -46,7 +46,7 @@ class CodexTextGeneratorTest {
         server.on(FakeCodexServer.RESPONSES) { Reply(200, "", "text/event-stream", chunks = listOf("data: {\"type\":\"response.created\"}\n\n") + sse("Cut ", "cafes ", "by 20%").chunked(23)) }
         val gen = signedInGenerator()
         assertTrue(gen.isReady())
-        assertEquals("Cut cafes by 20%", gen.generate(request))
+        assertEquals("Cut cafes by 20%", gen.generate(request).text)
 
         val req = server.requests.single { it.path == FakeCodexServer.RESPONSES }
         assertEquals("Bearer tok-1", req.headers["authorization"])
@@ -67,7 +67,7 @@ class CodexTextGeneratorTest {
         val gen = CodexTextGenerator(auth, server.endpoints)
         assertFalse(gen.isReady())
         assertEquals(null, gen.describe())
-        try { gen.generate(request); fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("Sign in")) }
+        try { gen.generate(request).text; fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("Sign in")) }
         assertEquals(0, server.requests.size)
     }
 
@@ -77,7 +77,7 @@ class CodexTextGeneratorTest {
             else Reply(200, sse("ok"), "text/event-stream")
         }
         server.on(FakeCodexServer.OAUTH_TOKEN) { Reply(200, """{"access_token":"tok-2","refresh_token":"ref-2"}""") }
-        assertEquals("ok", signedInGenerator().generate(request))
+        assertEquals("ok", signedInGenerator().generate(request).text)
         assertEquals(1, server.count(FakeCodexServer.OAUTH_TOKEN))
         assertEquals(2, server.count(FakeCodexServer.RESPONSES))
         assertTrue(store.get(CodexAuthManager.TOKENS_KEY)!!.contains("ref-2"))
@@ -86,7 +86,7 @@ class CodexTextGeneratorTest {
     @Test fun repeated401GivesUpAfterOneRetry() = runBlocking {
         server.on(FakeCodexServer.RESPONSES) { Reply(401, "{}") }
         server.on(FakeCodexServer.OAUTH_TOKEN) { Reply(200, """{"access_token":"tok-2","refresh_token":"ref-2"}""") }
-        try { signedInGenerator().generate(request); fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("Sign in again")) }
+        try { signedInGenerator().generate(request).text; fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("Sign in again")) }
         assertEquals(2, server.count(FakeCodexServer.RESPONSES))
         assertEquals(1, server.count(FakeCodexServer.OAUTH_TOKEN))
     }
@@ -95,7 +95,7 @@ class CodexTextGeneratorTest {
         val expectations = mapOf(403 to "plan or region", 429 to "usage limit", 500 to "having problems", 503 to "having problems")
         for ((status, fragment) in expectations) {
             server.on(FakeCodexServer.RESPONSES) { Reply(status, """{"detail":"x"}""") }
-            try { signedInGenerator().generate(request); fail("$status") } catch (e: AiBackendException) {
+            try { signedInGenerator().generate(request).text; fail("$status") } catch (e: AiBackendException) {
                 assertTrue("$status -> ${e.message}", e.message!!.contains(fragment))
             }
         }
@@ -108,7 +108,7 @@ class CodexTextGeneratorTest {
             if (!r.body.contains("\"instructions\"")) Reply(400, """{"detail":"Instructions are required"}""")
             else Reply(200, sse("fine"), "text/event-stream")
         }
-        assertEquals("fine", signedInGenerator().generate(request))
+        assertEquals("fine", signedInGenerator().generate(request).text)
         assertEquals(2, seenBodies.size)
         assertTrue(seenBodies[1].contains("\"instructions\":\"You are a budgeting coach.\""))
         assertFalse(seenBodies[1].contains("developer"))
@@ -123,8 +123,8 @@ class CodexTextGeneratorTest {
             else Reply(200, sse("hi"), "text/event-stream")
         }
         val gen = signedInGenerator()
-        assertEquals("hi", gen.generate(request))
-        assertEquals("hi", gen.generate(request))
+        assertEquals("hi", gen.generate(request).text)
+        assertEquals("hi", gen.generate(request).text)
         assertEquals(listOf("m-one", "m-two", "m-two"), models)
         assertTrue(gen.describe()!!.contains("m-two"))
     }
@@ -142,8 +142,8 @@ class CodexTextGeneratorTest {
         }
         val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
         assertEquals("Codex · mark@example.com", gen.describe())
-        assertEquals("listed", gen.generate(request))
-        assertEquals("listed", gen.generate(request))
+        assertEquals("Codex (codex-auto-review) · mark@example.com", gen.generate(request).by)
+        assertEquals("listed", gen.generate(request).text)
         assertEquals(listOf("codex-auto-review", "codex-auto-review"), tried)
         assertEquals(1, server.count(FakeCodexServer.MODELS))
         val list = server.requests.first { it.path == FakeCodexServer.MODELS }
@@ -167,7 +167,7 @@ class CodexTextGeneratorTest {
             else Reply(400, """{"detail":"The '$m' model is not supported when using Codex with a ChatGPT account."}""")
         }
         val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
-        assertEquals("listed", gen.generate(request))
+        assertEquals("listed", gen.generate(request).text)
         assertEquals(listOf("codex-auto-review"), tried)
         assertEquals(1, server.count(FakeCodexServer.OAUTH_TOKEN))
         assertEquals(2, server.count(FakeCodexServer.MODELS))
@@ -181,32 +181,32 @@ class CodexTextGeneratorTest {
             Reply(200, sse("default"), "text/event-stream")
         }
         val gen = signedInGenerator(models = CodexTextGenerator.DEFAULT_MODELS)
-        assertEquals("default", gen.generate(request))
+        assertEquals("default", gen.generate(request).text)
         assertEquals(listOf(CodexTextGenerator.DEFAULT_MODELS.first()), tried)
         assertEquals("Codex (${CodexTextGenerator.DEFAULT_MODELS.first()}) · mark@example.com", gen.describe())
     }
 
     @Test fun streamedErrorEventBecomesBackendException() = runBlocking {
         server.on(FakeCodexServer.RESPONSES) { Reply(200, "data: {\"type\":\"error\",\"error\":{\"message\":\"quota exceeded\"}}\n\n", "text/event-stream") }
-        try { signedInGenerator().generate(request); fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("quota exceeded")) }
+        try { signedInGenerator().generate(request).text; fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("quota exceeded")) }
     }
 
     @Test fun emptyStreamIsAnError() = runBlocking {
         server.on(FakeCodexServer.RESPONSES) { Reply(200, "data: {\"type\":\"response.completed\"}\n\n", "text/event-stream") }
-        try { signedInGenerator().generate(request); fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("empty")) }
+        try { signedInGenerator().generate(request).text; fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("empty")) }
     }
 
     @Test fun networkFailureBecomesBackendException() = runBlocking {
         val gen = signedInGenerator()
         server.stop()
-        try { gen.generate(request); fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("Network")) }
+        try { gen.generate(request).text; fail() } catch (e: AiBackendException) { assertTrue(e.message!!.contains("Network")) }
     }
 
     @Test fun cancellationAbortsAHangingRequest() = runBlocking {
         val entered = AtomicInteger()
         server.on(FakeCodexServer.RESPONSES) { entered.incrementAndGet(); Thread.sleep(3_000); Reply(200, sse("late"), "text/event-stream") }
         val gen = signedInGenerator()
-        val job = kotlinx.coroutines.GlobalScope.launch { gen.generate(request) }
+        val job = kotlinx.coroutines.GlobalScope.launch { gen.generate(request).text }
         while (entered.get() == 0) kotlinx.coroutines.delay(10)
         val t0 = System.nanoTime()
         job.cancelAndJoin()

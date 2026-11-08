@@ -1,5 +1,6 @@
 package com.example.finsightai.ai.backend
 
+import com.example.finsightai.ai.GeneratedText
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -15,10 +16,10 @@ class AiBackendRouterTest {
         var calls = 0
         override suspend fun describe() = if (ready) label else null
         override suspend fun isReady() = ready
-        override suspend fun generate(request: AiRequest): String {
+        override suspend fun generate(request: AiRequest): GeneratedText {
             calls++
             if (fail) throw AiBackendException("boom")
-            return "$id says hi"
+            return GeneratedText("$id says hi", label)
         }
     }
 
@@ -43,16 +44,20 @@ class AiBackendRouterTest {
         assertTrue(eff is EffectiveBackend.Deterministic)
     }
 
-    @Test fun labelDescribesTheBackendAfterItAnswered() = runTest {
-        val codex = object : TextGenerator {
-            var learned: String? = null
-            override val id = "codex"
-            override suspend fun describe() = "Codex (${learned ?: "unknown"})"
+    @Test fun labelIsWhatTheGeneratorReportsForThatAnswerNotTheCurrentDescription() = runTest {
+        var active = "Gemma 4 E2B"
+        val onDevice = object : TextGenerator {
+            override val id = "on-device"
+            override suspend fun describe() = active
             override suspend fun isReady() = true
-            override suspend fun generate(request: AiRequest): String { learned = "codex-auto-review"; return "hi" }
+            override suspend fun generate(request: AiRequest): GeneratedText {
+                val answeredBy = active
+                active = "Bonsai 1.7B"
+                return GeneratedText("hi", answeredBy)
+            }
         }
-        val router = AiBackendRouter(MutableStateFlow(BackendChoice.CODEX), mapOf(BackendChoice.CODEX to codex))
-        assertEquals("Codex (codex-auto-review)", router.generate(req)!!.by)
+        val router = AiBackendRouter(MutableStateFlow(BackendChoice.ON_DEVICE), mapOf(BackendChoice.ON_DEVICE to onDevice))
+        assertEquals("Gemma 4 E2B", router.generate(req)!!.by)
     }
 
     @Test fun failureReturnsNullAndRecordsError() = runTest {

@@ -38,9 +38,7 @@ class AiBackendRouter(
         val generator = generators[choiceFlow.value] ?: return null
         if (!generator.isReady()) return null
         return try {
-            val text = generator.generate(request)
-            _lastError.value = null
-            GeneratedText(text, generator.describe() ?: generator.id)
+            generator.generate(request).also { _lastError.value = null }
         } catch (cancel: CancellationException) {
             throw cancel
         } catch (e: AiBackendException) {

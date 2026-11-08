@@ -1,5 +1,6 @@
 package com.example.finsightai.ui.viewmodel
 
+import com.example.finsightai.ai.GeneratedText
 import com.example.finsightai.ai.backend.AiBackendRouter
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.ai.backend.BackendChoice
@@ -31,7 +32,7 @@ class FinSightViewModelAiTest {
         var calls = 0
         override suspend fun describe() = if (ready) "Fake 1B" else null
         override suspend fun isReady() = ready
-        override suspend fun generate(request: AiRequest): String { calls++; return reply }
+        override suspend fun generate(request: AiRequest): GeneratedText { calls++; return GeneratedText(reply, "Fake 1B") }
     }
 
     @Before fun setUp() = Dispatchers.setMain(dispatcher)

@@ -1,5 +1,6 @@
 package com.example.finsightai.codex
 
+import com.example.finsightai.ai.GeneratedText
 import com.example.finsightai.ai.backend.AiBackendException
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.ai.backend.TextGenerator
@@ -55,11 +56,15 @@ class CodexTextGenerator(
 
     override suspend fun describe(): String? {
         val signedIn = auth.state.value as? CodexAuthState.SignedIn ?: return null
-        val who = signedIn.email ?: signedIn.planType ?: "ChatGPT"
-        return workingModel?.let { "Codex ($it) · $who" } ?: "Codex · $who"
+        return label(signedIn, workingModel)
     }
 
-    override suspend fun generate(request: AiRequest): String {
+    private fun label(signedIn: CodexAuthState.SignedIn?, model: String?): String {
+        val who = signedIn?.let { it.email ?: it.planType } ?: "ChatGPT"
+        return model?.let { "Codex ($it) · $who" } ?: "Codex · $who"
+    }
+
+    override suspend fun generate(request: AiRequest): GeneratedText {
         if (!auth.isSignedIn) throw AiBackendException("Sign in to Codex in AI Setup first.")
         var lastError: AiBackendException? = null
         val candidates = (listOfNotNull(workingModel) + listedModels() + models).distinct()
@@ -68,7 +73,7 @@ class CodexTextGenerator(
                 try {
                     val text = attempt(request, model, useInstructionsField)
                     workingModel = model
-                    return text
+                    return GeneratedText(text, label(auth.state.value as? CodexAuthState.SignedIn, model))
                 } catch (e: ShapeRejected) {
                     lastError = e.asBackend()
                     if (e.about == Rejected.INSTRUCTIONS && !useInstructionsField) continue
