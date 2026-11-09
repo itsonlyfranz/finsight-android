@@ -7,8 +7,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.io.IOException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 
 /** A model whose file is fully downloaded, verified and registered. */
 data class InstalledModel(val spec: ModelSpec, val file: File, val installedAtMs: Long) {
@@ -67,11 +65,7 @@ class ModelStore(
     fun commit(spec: ModelSpec, partFile: File): InstalledModel = synchronized(lock) {
         val target = targetFile(spec)
         target.parentFile?.mkdirs()
-        try {
-            Files.move(partFile.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-        } catch (e: java.nio.file.AtomicMoveNotSupportedException) {
-            Files.move(partFile.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING)
-        }
+        atomicReplace(partFile, target)
         val model = InstalledModel(spec, target, clock())
         val updated = _installed.value.filterNot { it.id == spec.id } + model
         try {
@@ -159,15 +153,16 @@ class ModelStore(
         val tmp = File(root, "$MANIFEST_NAME.tmp")
         try {
             tmp.writeText(text)
-            try {
-                Files.move(tmp.toPath(), manifestFile.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
-            } catch (e: java.nio.file.AtomicMoveNotSupportedException) {
-                Files.move(tmp.toPath(), manifestFile.toPath(), StandardCopyOption.REPLACE_EXISTING)
-            }
+            atomicReplace(tmp, manifestFile)
         } catch (e: IOException) {
             tmp.delete()
             throw e
         }
+    }
+
+    /** POSIX rename(2): atomic and replaces [to] on the same filesystem; works on every API level. */
+    private fun atomicReplace(from: File, to: File) {
+        if (!from.renameTo(to)) throw IOException("Could not move ${from.name} to ${to.name}")
     }
 
     private fun safeName(name: String) = name.substringAfterLast('/').replace("..", "_")
