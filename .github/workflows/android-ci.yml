@@ -53,6 +53,45 @@ jobs:
         # Before the emulator steps so a lint failure fails fast.
         run: bash gradlew lintDebug --stacktrace
 
+      - name: Build shrunk release APK (R8)
+        # Builds the shipped release config (minify + resource shrinking) so an R8 or keep-rule break,
+        # e.g. in the llama.cpp JNI bridge, fails here. -PciDebugSigning only signs with the
+        # auto-generated debug key so the APK can be installed on the emulator below; no keystore or
+        # secret is involved. Placed before the emulator steps so it fails fast.
+        run: |
+          bash gradlew assembleRelease -PciDebugSigning --stacktrace
+
+          mapping_dir=app/build/outputs/mapping/release
+          apk=app/build/outputs/apk/release/app-release.apk
+          out="$RUNNER_TEMP/release"
+          mkdir -p "$out"
+
+          # The JNI surface must survive shrinking under its original names (seeds.txt lists every
+          # member matched by a keep rule). Native code binds/looks these up by name.
+          for sym in \
+            'com.example.finsightai.llm.LlamaNative: void nativeInit(java.lang.String)' \
+            'com.example.finsightai.llm.LlamaNative: java.lang.String nativeSystemInfo()' \
+            'com.example.finsightai.llm.LlamaNative: int nativeLoad(java.lang.String,int,long[])' \
+            'com.example.finsightai.llm.LlamaNative: void nativeRelease(long)' \
+            'com.example.finsightai.llm.LlamaNative: int nativeGenerate(' \
+            'com.example.finsightai.llm.TokenSink: boolean onToken(byte[])'; do
+            grep -qF -- "$sym" "$mapping_dir/seeds.txt" || { echo "::error::R8 did not keep JNI symbol: $sym"; exit 1; }
+          done
+
+          # Keep the APK for the on-emulator launch check (a later gradle run overwrites the output).
+          cp "$apk" "$out/app-release.apk"
+          bytes=$(stat -f%z "$apk")
+          {
+            echo "release_apk_bytes=$bytes"
+            echo "release_apk_mib=$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b / 1048576 }')"
+            echo "mapping_txt_bytes=$(stat -f%z "$mapping_dir/mapping.txt")"
+          } | tee "$out/apk-size.txt"
+          {
+            echo "### Shrunk release APK"
+            echo "- Size: **$(awk -v b="$bytes" 'BEGIN { printf "%.2f", b / 1048576 }') MiB** ($bytes bytes), R8 + resource shrinking on, debug-signed for CI only"
+          } >> "$GITHUB_STEP_SUMMARY"
+          cp "$mapping_dir/mapping.txt" "$mapping_dir/seeds.txt" "$mapping_dir/usage.txt" "$mapping_dir/configuration.txt" "$out/"
+
       - name: Prepare dedicated CI emulator (AVD)
         run: |
           # Never touch the captain's own finsight_api36 AVD: CI has its own.
@@ -97,6 +136,33 @@ jobs:
       - name: Run instrumented tests
         run: bash gradlew connectedDebugAndroidTest --stacktrace
 
+      - name: Smoke-test shrunk release on emulator
+        # Proves the R8-shrunk release APK runs: it launches, and every llama.cpp JNI entry point
+        # resolves (no model download needed). A stripped or renamed JNI class fails here instead of
+        # crashing users.
+        run: |
+          mkdir -p "$RUNNER_TEMP/release"
+          pkg=com.finsight.ai
+
+          # 1) Plain launch of the shrunk release APK, exactly as a user would start it.
+          adb uninstall "$pkg" >/dev/null 2>&1 || true
+          adb install -r "$RUNNER_TEMP/release/app-release.apk"
+          adb logcat -c
+          adb shell am start -W -n "$pkg/com.example.finsightai.MainActivity"
+          sleep 8
+          adb logcat -d > "$RUNNER_TEMP/release/launch-logcat.txt" || true
+          adb shell pidof "$pkg" || { echo "::error::Shrunk release app is not running after launch"; exit 1; }
+          if grep -E "FATAL EXCEPTION|UnsatisfiedLinkError|NoClassDefFoundError|ClassNotFoundException" "$RUNNER_TEMP/release/launch-logcat.txt"; then
+            echo "::error::Crash while launching the shrunk release app"; exit 1
+          fi
+          adb uninstall "$pkg"
+
+          # 2) Real JNI calls against the shrunk release build (library load, backend init,
+          #    system info, model load error path, generate/release entry points, TokenSink callback).
+          bash gradlew connectedReleaseAndroidTest -PciDebugSigning -PciReleaseTests \
+            -Pandroid.testInstrumentationRunnerArguments.class=com.example.finsightai.llm.ReleaseShrinkSmokeTest \
+            --stacktrace
+
       - name: Stop emulator
         if: always()
         run: |
@@ -127,6 +193,21 @@ jobs:
           path: |
             app/build/reports/tests/testDebugUnitTest
             app/build/test-results/testDebugUnitTest
+          if-no-files-found: warn
+
+      - name: Upload release R8 mapping and APK size
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-r8-mapping-and-size
+          path: |
+            ${{ runner.temp }}/release/apk-size.txt
+            ${{ runner.temp }}/release/mapping.txt
+            ${{ runner.temp }}/release/seeds.txt
+            ${{ runner.temp }}/release/usage.txt
+            ${{ runner.temp }}/release/configuration.txt
+            ${{ runner.temp }}/release/launch-logcat.txt
+            app/build/reports/androidTests/connected/release
           if-no-files-found: warn
 
       - name: Upload instrumented test reports

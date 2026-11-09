@@ -4,6 +4,9 @@ plugins {
   alias(libs.plugins.kotlin.serialization)
 }
 
+val ciDebugSigning = providers.gradleProperty("ciDebugSigning").isPresent
+val ciReleaseTests = providers.gradleProperty("ciReleaseTests").isPresent
+
 android {
     namespace = "com.example.finsightai"
     compileSdk = 36
@@ -52,9 +55,24 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            testProguardFiles("proguard-test-rules.pro")
+            // CI only (-PciDebugSigning): sign the release APK with the auto-generated debug key so
+            // it can be installed on the emulator. Never used for publishing; no keystore is committed.
+            if (ciDebugSigning) {
+                signingConfig = signingConfigs.getByName("debug")
+            }
+            // CI only (-PciReleaseTests): lets the androidx.test runner start inside the shrunk app.
+            if (ciReleaseTests) {
+                proguardFile("proguard-ci-test-rules.pro")
+            }
         }
+    }
+    // CI only (-PciReleaseTests): run the instrumented smoke tests against the shrunk release APK.
+    if (ciReleaseTests) {
+        testBuildType = "release"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
