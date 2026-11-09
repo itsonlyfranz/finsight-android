@@ -18,7 +18,7 @@ SharedPreferences, Keystore secrets, real `HttpHfApi` / `HttpModelDownloader`) i
 | CSV export | `CsvExporterTest` (string only) | `TransactionsE2ETest`: the shared file's contents, numeric amounts, filter, escaping |
 | AI insights, rules fallback | `AiFeaturesE2ETest` | `CodexAndBackendsE2ETest`: no model, Codex signed out, Codex failing + recovery |
 | What-if simulator | unit only | `DashboardSimulatorE2ETest`: default levers, slider changes, baseline change after adding an expense |
-| Savings goals | unit only | Preset goals removed after this pass: `DashboardSimulatorE2ETest` and `EmptyStateE2ETest` check the empty goals state; goal timelines are unit-tested (`ForwardSimulatorEngineTest`) |
+| Savings goals | unit only | Preset goals removed after this pass: `DashboardSimulatorE2ETest` and `EmptyStateE2ETest` check the empty goals state; goal add/edit/delete stored in SQLite added later (`GoalsE2ETest`); goal timelines are unit-tested (`ForwardSimulatorEngineTest`) |
 | Themes | none | `ThemesPersistenceE2ETest`: every theme, painted background, saved, all tabs |
 | Settings (theme, backend, HF token, Codex model) | partly (`AiSetupE2ETest`, in memory) | `SettingsPersistenceE2ETest` + `ProcessRestartE2ETest` on real storage |
 | Persistence: activity recreation | none | `ThemesPersistenceE2ETest`, `SettingsPersistenceE2ETest` |
