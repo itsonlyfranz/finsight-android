@@ -159,8 +159,8 @@ object OutputCleaner {
  * claim a finance nudge makes; wording is left to the model.
  */
 object NumberGuard {
-    // Peso is the app currency; a model that still writes "$" is checked the same way.
-    private val money = Regex("""[₱$]\s?([0-9][0-9,]*(?:\.[0-9]+)?)""")
+    // Peso is the app currency, written "₱" or "PHP"; a model that still writes "$" is checked the same way.
+    private val money = Regex("""(?:₱|\$|\bPHP)\s?([0-9][0-9,]*(?:\.[0-9]+)?)""", RegexOption.IGNORE_CASE)
 
     fun isGrounded(generated: String, facts: String): Boolean {
         val allowed = money.findAll(facts).mapNotNull { it.groupValues[1].replace(",", "").toDoubleOrNull() }.toList()

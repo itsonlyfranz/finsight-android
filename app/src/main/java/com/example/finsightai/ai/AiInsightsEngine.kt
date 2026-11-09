@@ -12,7 +12,7 @@ class AiInsightsEngine {
 
     fun generateInsights(
         transactions: List<Transaction>,
-        monthlyIncome: Double = 3200.0,
+        monthlyIncome: Double = 45000.0,
         customBudgets: Map<TransactionCategory, Double> = emptyMap()
     ): List<AiInsight> {
         val insights = mutableListOf<AiInsight>()
@@ -44,7 +44,7 @@ class AiInsightsEngine {
                 append(". Small frequent swipes easily slip under the radar for junior engineers.")
             }
 
-            val savingsEstimate = (cafeSpend * 0.25).coerceAtLeast(30.0)
+            val savingsEstimate = (cafeSpend * 0.25).coerceAtLeast(400.0)
             insights.add(
                 AiInsight(
                     id = "insight_cafe_lifestyle_inflation",
@@ -86,7 +86,7 @@ class AiInsightsEngine {
         val subSpend = categoryTotals[TransactionCategory.SUBSCRIPTIONS] ?: 0.0
         val subBudget = customBudgets[TransactionCategory.SUBSCRIPTIONS]
             ?: TransactionCategory.SUBSCRIPTIONS.defaultMonthlyBudget
-        if (subSpend > subBudget || subSpend > 100.0) {
+        if (subSpend > subBudget || subSpend > 2500.0) {
             insights.add(
                 AiInsight(
                     id = "insight_subscription_drift",
@@ -94,7 +94,7 @@ class AiInsightsEngine {
                     description = "Monthly recurring subscriptions currently sit at ${Money.format(subSpend)}. Overlapping media or AI coding copilot tools add up fast.",
                     type = InsightType.RISK_NUDGE,
                     impactAmount = subSpend,
-                    actionSuggestion = "Audit active tools and downgrade duplicate streaming or SaaS subscriptions to free up ~₱30-₱40/mo.",
+                    actionSuggestion = "Audit active tools and downgrade duplicate streaming or SaaS subscriptions to free up ~₱500-₱1,100/mo.",
                     severity = Severity.LOW
                 )
             )
@@ -108,7 +108,7 @@ class AiInsightsEngine {
             (categoryTotals[TransactionCategory.GROCERIES] ?: 0.0) +
             (categoryTotals[TransactionCategory.TRANSPORT] ?: 0.0)
 
-        val baselineEssentials = if (essentialSpend > 0) essentialSpend else 1400.0
+        val baselineEssentials = if (essentialSpend > 0) essentialSpend else 19600.0
         // Calculate estimated emergency buffer in months assuming realistic starter savings reserve
         val starterReserve = (monthlyIncome * 0.9) + netSavings
         val emergencyMonths = starterReserve / baselineEssentials
@@ -162,7 +162,7 @@ class AiInsightsEngine {
                 title = "Leverage WFH & Learning Stipends",
                 description = "Before paying out-of-pocket for keyboards, monitors, or tech books, check your company's fringe benefits for equipment and education budgets.",
                 type = InsightType.TIP,
-                impactAmount = 250.0,
+                impactAmount = 3500.0,
                 actionSuggestion = "Submit monitor and desk setup receipts through your corporate expense management system.",
                 severity = Severity.LOW
             )

@@ -13,24 +13,24 @@ data class SavingsGoal(
             SavingsGoal(
                 id = "goal_emergency",
                 title = "Emergency Reserve (3 Months)",
-                targetAmount = 5400.0,
-                currentSaved = 2100.0,
+                targetAmount = 75600.0,
+                currentSaved = 29400.0,
                 icon = "🛡️",
                 description = "Living expenses cushion for peace of mind"
             ),
             SavingsGoal(
                 id = "goal_dev_rig",
                 title = "M4 Pro Dev Rig & Setup",
-                targetAmount = 3200.0,
-                currentSaved = 800.0,
+                targetAmount = 44800.0,
+                currentSaved = 11200.0,
                 icon = "💻",
                 description = "Next-gen workspace & hardware upgrade"
             ),
             SavingsGoal(
                 id = "goal_tokyo_tour",
                 title = "Tokyo Cafe & Tech Tour",
-                targetAmount = 2500.0,
-                currentSaved = 450.0,
+                targetAmount = 35000.0,
+                currentSaved = 6300.0,
                 icon = "✈️",
                 description = "Akihabara tech hunt & Tokyo pour-overs"
             )

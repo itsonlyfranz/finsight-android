@@ -12,7 +12,7 @@ import kotlin.math.roundToInt
 
 class ForwardSimulatorEngine(
     private val defaultAnnualYield: Double = 0.045,
-    private val defaultBaseSavings: Double = 300.0
+    private val defaultBaseSavings: Double = 4200.0
 ) {
 
     fun simulate(
@@ -150,11 +150,11 @@ class ForwardSimulatorEngine(
 
         return when {
             cafeSaved > 0 && techSaved > 0 -> {
-                val cafeVisits = maxOf(1, (cafeSaved / 28.0).roundToInt() * 2)
+                val cafeVisits = maxOf(1, (cafeSaved / 400.0).roundToInt() * 2)
                 "By cutting back $cafeVisits cafe visits per week and moderating tech impulse upgrades ($formattedMonthly/mo), you'll accumulate $formatted12M in 12 months — building a formidable emergency tech reserve without sacrificing weekend leisure."
             }
             cafeSaved > 0 && techSaved <= 0.1 -> {
-                val cafeVisits = maxOf(1, (cafeSaved / 28.0).roundToInt() * 2)
+                val cafeVisits = maxOf(1, (cafeSaved / 400.0).roundToInt() * 2)
                 "By cutting back $cafeVisits cafe visits per week ($formattedMonthly/mo), you'll accumulate $formatted12M in 12 months — enough for your emergency tech reserve without sacrificing weekend leisure."
             }
             techSaved > 0 && cafeSaved <= 0.1 -> {

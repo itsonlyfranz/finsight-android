@@ -170,7 +170,7 @@ class AiInsightsEngineTest {
         val seed = DefaultFinSightRepository.seedMarkSantosData()
         val insights = engine.generateInsights(
             transactions = seed,
-            monthlyIncome = 3200.0
+            monthlyIncome = 45000.0
         )
 
         val riskNudges = insights.filter { it.type == InsightType.RISK_NUDGE }
@@ -181,15 +181,15 @@ class AiInsightsEngineTest {
         assertTrue("Should have growth focus insights", growthFocus.isNotEmpty())
         assertTrue("Should have tips", tips.isNotEmpty())
 
-        // Mark has 14 cafe visits + 6 dining outings (₱620 total in CAFES_DINING)
+        // Mark has 14 cafe visits + 6 dining outings (₱8,800 total in CAFES_DINING)
         val cafeInsight = insights.find { it.id == "insight_cafe_lifestyle_inflation" }
         assertNotNull(cafeInsight)
 
-        // Mark spent ₱420 on Tech Gadgets (budget 250)
+        // Mark spent ₱5,900 on Tech Gadgets (budget ₱3,500)
         val techInsight = insights.find { it.id == "insight_tech_gadget_spike" }
         assertNotNull(techInsight)
 
-        // Mark spent ₱120 on Subscriptions
+        // Mark spent ₱3,496 on Subscriptions (budget ₱2,500)
         val subInsight = insights.find { it.id == "insight_subscription_drift" }
         assertNotNull(subInsight)
     }

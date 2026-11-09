@@ -462,7 +462,7 @@ private fun SimulatorQuickActionCard(
                         )
                     )
                     Text(
-                        text = "Simulate 20% cafe & tech cuts compounding to ₱1,400+ in 12M",
+                        text = "Simulate 20% cafe & tech cuts compounding to ₱35,000+ in 12M",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextSecondary
                         )
