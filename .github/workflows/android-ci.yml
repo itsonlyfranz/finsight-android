@@ -21,6 +21,11 @@ jobs:
     env:
       JAVA_HOME: /Applications/Android Studio.app/Contents/jbr/Contents/Home
       CI_AVD: finsight_ci_api36
+      # The CI emulator owns a fixed console port (adb serial emulator-<port>). This runner shares
+      # one adb server with the captain's own emulators (finsight_api36 on 5554), so every adb call
+      # below targets CI_EMULATOR_SERIAL explicitly and cleanup only ever touches that serial.
+      CI_EMULATOR_PORT: "5580"
+      CI_EMULATOR_SERIAL: emulator-5580
       SYSTEM_IMAGE: system-images;android-36;google_apis;arm64-v8a
     steps:
       - name: Set up machine toolchain paths
@@ -94,30 +99,51 @@ jobs:
 
       - name: Prepare dedicated CI emulator (AVD)
         run: |
-          # Never touch the captain's own finsight_api36 AVD: CI has its own.
+          # Never touch the captain's own emulators/AVDs: CI has its own AVD, port and serial.
           if ! emulator -list-avds | grep -qx "$CI_AVD"; then
             echo "Creating AVD $CI_AVD"
             echo no | avdmanager create avd --force -n "$CI_AVD" -k "$SYSTEM_IMAGE" -d pixel_7
           fi
-          # Free any emulator left over from a crashed run so two never overlap.
+
+          # Every later adb call and Gradle connected-test task targets only the CI emulator.
+          echo "ANDROID_SERIAL=$CI_EMULATOR_SERIAL" >> "$GITHUB_ENV"
+
+          # Free a CI emulator left over from a crashed run, and nothing else.
           adb start-server
-          adb devices | awk '/^emulator-/ {print $1}' | while read -r serial; do
-            adb -s "$serial" emu kill || true
+          if adb devices | awk '{print $1}' | grep -qx "$CI_EMULATOR_SERIAL"; then
+            avd_name=$(adb -s "$CI_EMULATOR_SERIAL" emu avd name 2>/dev/null | tr -d '\r' | head -n 1)
+            if [ "$avd_name" != "$CI_AVD" ]; then
+              echo "::error::$CI_EMULATOR_SERIAL is already in use by another emulator (AVD '${avd_name:-unknown}'); refusing to kill it. Free that port or change CI_EMULATOR_PORT."
+              exit 1
+            fi
+            echo "Stopping leftover CI emulator $CI_EMULATOR_SERIAL"
+            adb -s "$CI_EMULATOR_SERIAL" emu kill || true
+          fi
+          pkill -f "qemu-system.* -avd $CI_AVD( |\$)" || true
+
+          # The emulator binds the console port and the adb port (console + 1); both must be free.
+          deadline=$((SECONDS + 30))
+          while lsof -nP -iTCP:"$CI_EMULATOR_PORT" -iTCP:"$((CI_EMULATOR_PORT + 1))" -sTCP:LISTEN >/dev/null 2>&1; do
+            if [ "$SECONDS" -ge "$deadline" ]; then
+              echo "::error::TCP port $CI_EMULATOR_PORT or $((CI_EMULATOR_PORT + 1)) is held by another process; refusing to kill it:"
+              lsof -nP -iTCP:"$CI_EMULATOR_PORT" -iTCP:"$((CI_EMULATOR_PORT + 1))" -sTCP:LISTEN || true
+              exit 1
+            fi
+            sleep 1
           done
-          pkill -f "qemu-system.*-avd $CI_AVD" || true
 
       - name: Start emulator headless and wait for boot
         run: |
           mkdir -p "$RUNNER_TEMP/emulator"
           # -wipe-data + -no-snapshot-* => every run boots from a clean userdata.
-          nohup emulator -avd "$CI_AVD" -no-window -no-audio -no-boot-anim \
+          nohup emulator -avd "$CI_AVD" -port "$CI_EMULATOR_PORT" -no-window -no-audio -no-boot-anim \
             -no-snapshot -wipe-data -gpu swiftshader_indirect -no-metrics \
             > "$RUNNER_TEMP/emulator/emulator.log" 2>&1 &
           echo "$!" > "$RUNNER_TEMP/emulator/emulator.pid"
 
-          timeout 120 adb wait-for-device
+          timeout 120 adb -s "$CI_EMULATOR_SERIAL" wait-for-device
           deadline=$((SECONDS + 600))
-          until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
+          until [ "$(adb -s "$CI_EMULATOR_SERIAL" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do
             if [ "$SECONDS" -ge "$deadline" ]; then
               echo "::error::Emulator did not finish booting within 10 minutes"
               tail -n 50 "$RUNNER_TEMP/emulator/emulator.log" || true
@@ -128,12 +154,13 @@ jobs:
           echo "Emulator booted after ${SECONDS}s"
 
           # Settle, then disable animations to keep UI tests stable.
-          adb shell input keyevent 82 || true
-          adb shell settings put global window_animation_scale 0
-          adb shell settings put global transition_animation_scale 0
-          adb shell settings put global animator_duration_scale 0
+          adb -s "$CI_EMULATOR_SERIAL" shell input keyevent 82 || true
+          adb -s "$CI_EMULATOR_SERIAL" shell settings put global window_animation_scale 0
+          adb -s "$CI_EMULATOR_SERIAL" shell settings put global transition_animation_scale 0
+          adb -s "$CI_EMULATOR_SERIAL" shell settings put global animator_duration_scale 0
 
       - name: Run instrumented tests
+        # ANDROID_SERIAL (exported above) pins Gradle's connected-test tasks to the CI emulator.
         run: bash gradlew connectedDebugAndroidTest --stacktrace
 
       - name: Smoke-test shrunk release on emulator
@@ -143,22 +170,38 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/release"
           pkg=com.finsight.ai
+          adb_ci() { adb -s "$CI_EMULATOR_SERIAL" "$@"; }
 
           # 1) Plain launch of the shrunk release APK, exactly as a user would start it.
-          adb uninstall "$pkg" >/dev/null 2>&1 || true
-          adb install -r "$RUNNER_TEMP/release/app-release.apk"
-          adb logcat -c
-          adb shell am start -W -n "$pkg/com.example.finsightai.MainActivity"
+          adb_ci uninstall "$pkg" >/dev/null 2>&1 || true
+          adb_ci install -r "$RUNNER_TEMP/release/app-release.apk"
+          adb_ci logcat -c
+          adb_ci shell am start -W -n "$pkg/com.example.finsightai.MainActivity"
           sleep 8
-          adb logcat -d > "$RUNNER_TEMP/release/launch-logcat.txt" || true
-          adb shell pidof "$pkg" || { echo "::error::Shrunk release app is not running after launch"; exit 1; }
+
+          # adb can report the emulator "offline" for a moment after a clean launch (seen once, with
+          # no crash). Wait for it to be back online, then retry pidof over a short bounded window
+          # instead of failing on the first blip.
+          running=0
+          for attempt in 1 2 3 4 5 6; do
+            timeout 30 adb -s "$CI_EMULATOR_SERIAL" wait-for-device || true
+            if adb_ci shell pidof "$pkg"; then running=1; break; fi
+            echo "pidof attempt $attempt/6: $pkg not found (or device not ready); retrying"
+            sleep 5
+          done
+          timeout 30 adb -s "$CI_EMULATOR_SERIAL" wait-for-device || true
+          adb_ci logcat -d > "$RUNNER_TEMP/release/launch-logcat.txt" || true
+          if [ "$running" != "1" ]; then
+            echo "::error::Shrunk release app is not running after launch"; exit 1
+          fi
           if grep -E "FATAL EXCEPTION|UnsatisfiedLinkError|NoClassDefFoundError|ClassNotFoundException" "$RUNNER_TEMP/release/launch-logcat.txt"; then
             echo "::error::Crash while launching the shrunk release app"; exit 1
           fi
-          adb uninstall "$pkg"
+          adb_ci uninstall "$pkg"
 
           # 2) Real JNI calls against the shrunk release build (library load, backend init,
           #    system info, model load error path, generate/release entry points, TokenSink callback).
+          #    ANDROID_SERIAL pins Gradle to the CI emulator.
           bash gradlew connectedReleaseAndroidTest -PciDebugSigning -PciReleaseTests \
             -Pandroid.testInstrumentationRunnerArguments.class=com.example.finsightai.llm.ReleaseShrinkSmokeTest \
             --stacktrace
@@ -166,13 +209,19 @@ jobs:
       - name: Stop emulator
         if: always()
         run: |
-          adb devices | awk '/^emulator-/ {print $1}' | while read -r serial; do
-            adb -s "$serial" emu kill || true
-          done
+          # Stop only the CI emulator (serial + AVD), never any other emulator on this shared adb server.
+          if adb devices | awk '{print $1}' | grep -qx "$CI_EMULATOR_SERIAL"; then
+            avd_name=$(adb -s "$CI_EMULATOR_SERIAL" emu avd name 2>/dev/null | tr -d '\r' | head -n 1)
+            if [ "$avd_name" = "$CI_AVD" ]; then
+              adb -s "$CI_EMULATOR_SERIAL" emu kill || true
+            else
+              echo "::warning::$CI_EMULATOR_SERIAL is not the CI emulator (AVD '${avd_name:-unknown}'); leaving it alone"
+            fi
+          fi
           if [ -f "$RUNNER_TEMP/emulator/emulator.pid" ]; then
             kill "$(cat "$RUNNER_TEMP/emulator/emulator.pid")" 2>/dev/null || true
           fi
-          pkill -f "qemu-system.*-avd $CI_AVD" || true
+          pkill -f "qemu-system.* -avd $CI_AVD( |\$)" || true
           true
 
       - name: Upload lint reports
