@@ -2,6 +2,8 @@ package com.example.finsightai.e2e
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -111,13 +113,10 @@ class OnDeviceModelsE2ETest {
         rule.waitForTag("ai_setup_list")
     }
 
-    private fun effectiveStatus(): String {
+    private fun waitForStatus(prefix: String) {
         rule.scrollToTag("ai_setup_list", "effective_status")
-        return rule.textOf("effective_status")
+        rule.waitForNode(hasTestTag("effective_status") and hasTextStartingWith(prefix))
     }
-
-    private fun waitForStatus(prefix: String) =
-        rule.waitUntil(10_000) { runCatching { effectiveStatus().startsWith(prefix) }.getOrDefault(false) }
 
     private fun spec(id: String): ModelSpec = app.store.find(id)!!.spec
 
@@ -159,7 +158,7 @@ class OnDeviceModelsE2ETest {
 
         hub.searchStatus = 429
         rule.onNodeWithTag("search_button").performClick()
-        rule.waitUntil(10_000) { runCatching { rule.textOf("search_error").contains("rate limiting") }.getOrDefault(false) }
+        rule.waitForNode(hasTestTag("search_error") and hasText("rate limiting", substring = true))
 
         hub.searchStatus = 200
         rule.onNodeWithTag("search_button").performClick()

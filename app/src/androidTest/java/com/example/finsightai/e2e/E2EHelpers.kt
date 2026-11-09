@@ -25,6 +25,20 @@ fun ComposeTestRule.waitGone(tag: String, timeoutMs: Long = 10_000) =
 fun ComposeTestRule.waitForText(text: String, substring: Boolean = false, timeoutMs: Long = 10_000) =
     waitUntil(timeoutMs) { onAllNodesWithText(text, substring = substring).fetchSemanticsNodes().isNotEmpty() }
 
+/**
+ * Waits until a node matching [matcher] exists. Use this, not `runCatching { assert...() }`, to poll for
+ * UI that changes asynchronously: the matcher runs on the UI thread inside the fetch, whereas reading a
+ * node's semantics on the test thread races the main thread's draw ("Detected multithreaded access to
+ * SnapshotStateObserver").
+ */
+fun ComposeTestRule.waitForNode(matcher: SemanticsMatcher, timeoutMs: Long = 10_000) =
+    waitUntil(timeoutMs) { onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
+
+/** Matches a node whose text (joined if it has several runs) starts with [prefix]. */
+fun hasTextStartingWith(prefix: String) = SemanticsMatcher("text starts with '$prefix'") { node ->
+    node.config.getOrElseNullable(SemanticsProperties.Text) { null }?.joinToString("") { it.text }?.startsWith(prefix) == true
+}
+
 fun ComposeTestRule.hasTag(tag: String) = onAllNodesWithTag(tag).fetchSemanticsNodes().isNotEmpty()
 
 fun ComposeTestRule.openTab(name: String) {

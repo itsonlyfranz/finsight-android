@@ -2,6 +2,8 @@ package com.example.finsightai.e2e
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
@@ -55,8 +57,11 @@ class CodexAndBackendsE2ETest {
         return rule.textOf("effective_status")
     }
 
-    private fun waitForStatus(expected: String) =
-        rule.waitUntil(10_000) { runCatching { effectiveStatus() == expected }.getOrDefault(false) }
+    private fun waitForStatus(expected: String) {
+        rule.openTab("ai_setup")
+        rule.scrollToTag("ai_setup_list", "effective_status")
+        rule.waitForNode(hasTestTag("effective_status") and hasText(expected))
+    }
 
     private fun signInThroughTheUi() {
         rule.openTab("ai_setup")

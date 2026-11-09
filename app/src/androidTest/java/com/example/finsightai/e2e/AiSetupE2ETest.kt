@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithTag
@@ -154,10 +155,7 @@ class AiSetupE2ETest {
     @Test fun deletingTheActiveModelFallsBackToBuiltInRules() {
         installViaUi(lfm)
         rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("effective_status"))
-        rule.waitUntil(5_000) {
-            rule.onAllNodesWithTag("effective_status").fetchSemanticsNodes().isNotEmpty() &&
-                runCatching { rule.onNodeWithTag("effective_status").assertTextStartsWith("Writing insights with") }.isSuccess
-        }
+        rule.waitForNode(hasTestTag("effective_status") and hasTextStartingWith("Writing insights with"), 5_000)
         val file = h.store.find(lfm.id)!!.file
 
         scrollTo("delete_${lfm.id}")
@@ -168,9 +166,7 @@ class AiSetupE2ETest {
         assertFalse(file.exists())
         assertNull(h.store.activeModel.value)
         rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("effective_status"))
-        rule.waitUntil(5_000) {
-            runCatching { rule.onNodeWithTag("effective_status").assertTextStartsWith("Using built-in rules") }.isSuccess
-        }
+        rule.waitForNode(hasTestTag("effective_status") and hasTextStartingWith("Using built-in rules"), 5_000)
     }
 
     // ---- backend switching ----
@@ -180,14 +176,10 @@ class AiSetupE2ETest {
         rule.onNodeWithTag("ai_setup_list").performScrollToNode(hasTestTag("backend_codex"))
         rule.onNodeWithTag("backend_codex").performClick()
         rule.waitUntil(5_000) { h.prefs.choice.value == BackendChoice.CODEX }
-        rule.waitUntil(5_000) {
-            runCatching { rule.onNodeWithTag("effective_status").assertTextStartsWith("Using built-in rules: Not signed in") }.isSuccess
-        }
+        rule.waitForNode(hasTestTag("effective_status") and hasTextStartingWith("Using built-in rules: Not signed in"), 5_000)
         rule.onNodeWithTag("backend_on_device").performClick()
         assertEquals(BackendChoice.ON_DEVICE, h.prefs.choice.value)
-        rule.waitUntil(5_000) {
-            runCatching { rule.onNodeWithTag("effective_status").assertTextStartsWith("Writing insights with") }.isSuccess
-        }
+        rule.waitForNode(hasTestTag("effective_status") and hasTextStartingWith("Writing insights with"), 5_000)
     }
 
     // ---- Codex sign-in (network mocked) ----
@@ -229,15 +221,13 @@ class AiSetupE2ETest {
         rule.onNodeWithTag("codex_model_gpt-fake-mini").assertIsNotSelected()
 
         rule.onNodeWithTag("codex_model_gpt-fake-mini").performClick()
-        rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag("codex_model_gpt-fake-mini").assertIsSelected() }.isSuccess }
+        rule.waitForNode(hasTestTag("codex_model_gpt-fake-mini") and isSelected(), 5_000)
         // A fresh preference over the same storage (an app restart) keeps the choice.
         assertEquals("gpt-fake-mini", CodexModelPreference(h.codexSettings).resolve("acct", h.codex.models))
 
         scrollTo("backend_codex")
         rule.onNodeWithTag("backend_codex").performClick()
-        rule.waitUntil(5_000) {
-            runCatching { rule.onNodeWithTag("effective_status").assertTextContains("gpt-fake-mini", substring = true) }.isSuccess
-        }
+        rule.waitForNode(hasTestTag("effective_status") and hasText("gpt-fake-mini", substring = true), 5_000)
     }
 
     @Test fun savedCodexModelThatTheAccountNoLongerOffersFallsBackToTheFirst() {
@@ -245,7 +235,7 @@ class AiSetupE2ETest {
         signInToCodex()
         waitForTag("codex_model_codex-auto-review")
         scrollTo("codex_model_codex-auto-review")
-        rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag("codex_model_codex-auto-review").assertIsSelected() }.isSuccess }
+        rule.waitForNode(hasTestTag("codex_model_codex-auto-review") and isSelected(), 5_000)
         rule.onAllNodesWithTag("codex_model_retired-model").assertCountEquals(0)
         assertEquals("codex-auto-review", CodexModelPreference(h.codexSettings).resolve("acct", h.codex.models))
     }
@@ -255,7 +245,7 @@ class AiSetupE2ETest {
         waitForTag("codex_model_gpt-fake-mini")
         scrollTo("codex_model_gpt-fake-mini")
         rule.onNodeWithTag("codex_model_gpt-fake-mini").performClick()
-        rule.waitUntil(5_000) { runCatching { rule.onNodeWithTag("codex_model_gpt-fake-mini").assertIsSelected() }.isSuccess }
+        rule.waitForNode(hasTestTag("codex_model_gpt-fake-mini") and isSelected(), 5_000)
         scrollTo("codex_sign_out")
         rule.onNodeWithTag("codex_sign_out").performClick()
         waitForTag("codex_sign_in")
@@ -406,9 +396,4 @@ class AiSetupE2ETest {
         waitForTag("hf_token_field")
         assertNull(h.hfTokens.get())
     }
-}
-
-private fun androidx.compose.ui.test.SemanticsNodeInteraction.assertTextStartsWith(prefix: String) {
-    val text = fetchSemanticsNode().config[androidx.compose.ui.semantics.SemanticsProperties.Text].joinToString("") { it.text }
-    if (!text.startsWith(prefix)) throw AssertionError("expected text starting with '$prefix' but was '$text'")
 }
