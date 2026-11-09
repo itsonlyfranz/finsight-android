@@ -49,6 +49,10 @@ jobs:
       - name: Build debug APK and run unit tests
         run: bash gradlew assembleDebug testDebugUnitTest --stacktrace
 
+      - name: Run Android Lint
+        # Before the emulator steps so a lint failure fails fast.
+        run: bash gradlew lintDebug --stacktrace
+
       - name: Prepare dedicated CI emulator (AVD)
         run: |
           # Never touch the captain's own finsight_api36 AVD: CI has its own.
@@ -104,6 +108,16 @@ jobs:
           fi
           pkill -f "qemu-system.*-avd $CI_AVD" || true
           true
+
+      - name: Upload lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+          if-no-files-found: warn
 
       - name: Upload unit test reports
         if: always()
