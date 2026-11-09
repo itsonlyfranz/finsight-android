@@ -89,7 +89,7 @@ class FinSightViewModelAiTest {
     }
 
     @Test fun hallucinatedMoneyIsRejectedAndFallsBack() = runTest(dispatcher) {
-        val generator = FakeGenerator(true, "INSIGHT: You should have $1,000,000.\nACTION: Win the lottery.")
+        val generator = FakeGenerator(true, "INSIGHT: You should have ₱1,000,000.\nACTION: Win the lottery.")
         val viewModel = vm(generator, MutableStateFlow(0))
         advanceUntilIdle()
         assertTrue(viewModel.insights.value.all { it.generatedBy == null })

@@ -45,7 +45,7 @@ class FinSightViewModelTest {
         assertTrue("Transactions should not be empty", transactions.isNotEmpty())
 
         val monthlyIncome = viewModel.monthlyIncome.value
-        assertEquals(3200.0, monthlyIncome, 0.001)
+        assertEquals(45000.0, monthlyIncome, 0.001)
 
         val totalSpent = viewModel.totalSpent.value
         assertTrue("Total spent should be greater than 0", totalSpent > 0.0)

@@ -56,7 +56,7 @@ import com.example.finsightai.theme.TextSecondary
 import com.example.finsightai.ui.components.categoryColor
 import com.example.finsightai.ui.components.categoryIcon
 import com.example.finsightai.ui.viewmodel.FinSightViewModel
-import java.util.Locale
+import com.example.finsightai.util.Money
 import kotlin.math.roundToInt
 
 @Composable
@@ -241,7 +241,7 @@ private fun ReductionSliderItem(
                         )
                     )
                     Text(
-                        text = "Current: $${formatCurrency(baselineSpend)}/mo",
+                        text = "Current: ${Money.format(baselineSpend)}/mo",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextMuted)
                     )
                 }
@@ -253,7 +253,7 @@ private fun ReductionSliderItem(
                 modifier = Modifier.border(1.dp, EmeraldBorder, RoundedCornerShape(8.dp))
             ) {
                 Text(
-                    text = "$reductionPct% cut (-$${formatCurrency(monthlySaved)}/mo)",
+                    text = "$reductionPct% cut (-${Money.format(monthlySaved)}/mo)",
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                     style = MaterialTheme.typography.labelSmall.copy(
                         color = BrightEmerald,
@@ -306,7 +306,7 @@ private fun ProjectionsSummaryCard(simulationResult: SimulationResult) {
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "+$${formatCurrency(simulationResult.monthlySavings)}/mo",
+                        text = "+${Money.format(simulationResult.monthlySavings)}/mo",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = BrightEmerald
@@ -400,7 +400,7 @@ private fun ProjectionColumnItem(
                 )
             )
             Text(
-                text = "$${formatCurrency(value)}",
+                text = "${Money.format(value)}",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Bold,
                     color = if (highlight) BrightEmerald else TextPrimary
@@ -469,10 +469,6 @@ private fun AiContextCard(aiExplanation: String, generatedBy: String? = null) {
             }
         }
     }
-}
-
-private fun formatCurrency(amount: Double): String {
-    return String.format(Locale.US, "%,.2f", amount)
 }
 
 @Composable
@@ -567,7 +563,7 @@ private fun SavingsGoalCountdownItem(projection: GoalProjection) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "$${formatCurrency(goal.currentSaved)} of $${formatCurrency(goal.targetAmount)}",
+                        text = "${Money.format(goal.currentSaved)} of ${Money.format(goal.targetAmount)}",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontWeight = FontWeight.SemiBold,
                             color = TextPrimary

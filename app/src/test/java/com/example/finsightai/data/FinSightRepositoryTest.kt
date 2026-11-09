@@ -23,18 +23,18 @@ class FinSightRepositoryTest {
         val transactions = repository.transactions.value
         val salaryTx = transactions.find { it.category == TransactionCategory.SALARY }
         assertNotNull("Salary transaction must exist", salaryTx)
-        assertEquals(3200.0, salaryTx?.amount ?: 0.0, 0.01)
+        assertEquals(45000.0, salaryTx?.amount ?: 0.0, 0.01)
 
         val rentTx = transactions.find { it.category == TransactionCategory.HOUSING_RENT }
         assertNotNull("Rent transaction must exist", rentTx)
-        assertEquals(950.0, rentTx?.amount ?: 0.0, 0.01)
+        assertEquals(13500.0, rentTx?.amount ?: 0.0, 0.01)
 
         val breakdown = repository.getCategoryBreakdown()
-        // Mark has $280 in cafes + $340 dining = $620 in CAFES_DINING
-        assertEquals(620.0, breakdown[TransactionCategory.CAFES_DINING] ?: 0.0, 0.01)
-        assertEquals(420.0, breakdown[TransactionCategory.TECH_GADGETS] ?: 0.0, 0.01)
-        assertEquals(120.0, breakdown[TransactionCategory.SUBSCRIPTIONS] ?: 0.0, 0.01)
-        assertEquals(300.0, breakdown[TransactionCategory.GROCERIES] ?: 0.0, 0.01)
+        // Mark has ₱4,000 in cafes + ₱4,800 dining = ₱8,800 in CAFES_DINING
+        assertEquals(8800.0, breakdown[TransactionCategory.CAFES_DINING] ?: 0.0, 0.01)
+        assertEquals(5900.0, breakdown[TransactionCategory.TECH_GADGETS] ?: 0.0, 0.01)
+        assertEquals(3496.0, breakdown[TransactionCategory.SUBSCRIPTIONS] ?: 0.0, 0.01)
+        assertEquals(4200.0, breakdown[TransactionCategory.GROCERIES] ?: 0.0, 0.01)
     }
 
     @Test
@@ -43,7 +43,7 @@ class FinSightRepositoryTest {
         val newTx = Transaction(
             id = "new_tx_1",
             title = "Specialty Coffee Roasters",
-            amount = 12.0,
+            amount = 180.0,
             category = TransactionCategory.CAFES_DINING,
             date = LocalDate.now(),
             isExpense = true
@@ -67,7 +67,7 @@ class FinSightRepositoryTest {
         val updated = Transaction(
             id = "tx_cafe_2",
             title = "Philz Mint Mojito Large",
-            amount = 8.50,
+            amount = 220.0,
             category = TransactionCategory.CAFES_DINING,
             date = LocalDate.now(),
             isExpense = true
@@ -75,7 +75,7 @@ class FinSightRepositoryTest {
         repository.updateTransaction(updated)
         val found = repository.transactions.value.find { it.id == "tx_cafe_2" }
         assertEquals("Philz Mint Mojito Large", found?.title)
-        assertEquals(8.50, found?.amount ?: 0.0, 0.01)
+        assertEquals(220.0, found?.amount ?: 0.0, 0.01)
     }
 
     @Test
@@ -91,9 +91,9 @@ class FinSightRepositoryTest {
         val simulation = repository.simulateSavings(
             mapOf(TransactionCategory.CAFES_DINING to 0.20f)
         )
-        // 20% of $620 = $124
-        assertEquals(124.0, simulation.monthlySavings, 0.01)
-        assertTrue(simulation.projectedSavings12M > 124 * 12)
+        // 20% of ₱8,800 = ₱1,760
+        assertEquals(1760.0, simulation.monthlySavings, 0.01)
+        assertTrue(simulation.projectedSavings12M > 1760 * 12)
         assertTrue(simulation.aiExplanation.isNotEmpty())
     }
 
@@ -106,14 +106,14 @@ class FinSightRepositoryTest {
 
     @Test
     fun `updateMonthlyIncome updates income state`() {
-        assertEquals(3200.0, repository.monthlyIncome.value, 0.01)
-        repository.updateMonthlyIncome(4000.0)
-        assertEquals(4000.0, repository.monthlyIncome.value, 0.01)
+        assertEquals(45000.0, repository.monthlyIncome.value, 0.01)
+        repository.updateMonthlyIncome(50000.0)
+        assertEquals(50000.0, repository.monthlyIncome.value, 0.01)
     }
 
     @Test
     fun `updateBudget updates category budget`() {
-        repository.updateBudget(TransactionCategory.CAFES_DINING, 200.0)
-        assertEquals(200.0, repository.currentBudget.value[TransactionCategory.CAFES_DINING] ?: 0.0, 0.01)
+        repository.updateBudget(TransactionCategory.CAFES_DINING, 3000.0)
+        assertEquals(3000.0, repository.currentBudget.value[TransactionCategory.CAFES_DINING] ?: 0.0, 0.01)
     }
 }

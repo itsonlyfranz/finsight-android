@@ -5,6 +5,7 @@ import com.example.finsightai.model.AiInsight
 import com.example.finsightai.model.GoalProjection
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.TransactionCategory
+import com.example.finsightai.util.Money
 import java.util.Locale
 
 /** Text produced by a generative backend, plus which backend produced it. */
@@ -29,7 +30,7 @@ data class InsightRewrite(val description: String, val actionSuggestion: String?
  * Binds the generative backends into the three AI features (nudges, what-if simulator, goal
  * milestone context) *without* touching the deterministic engines: the engines still compute every
  * number and produce the default wording; this class only asks a model to re-phrase that
- * wording from the engine's own facts. Anything that fails, is empty, or mentions a dollar figure
+ * wording from the engine's own facts. Anything that fails, is empty, or mentions a money figure
  * that was not in the facts is discarded (returns null) and the deterministic text stays.
  */
 class AiEnhancer(private val source: GenerativeSource) {
@@ -122,12 +123,13 @@ class AiEnhancer(private val source: GenerativeSource) {
 
     private fun categoryName(category: TransactionCategory): String = category.displayName
 
-    private fun money(value: Double): String = "$" + String.format(Locale.US, "%,.2f", value)
+    private fun money(value: Double): String = Money.format(value)
 
     companion object {
         const val SYSTEM_PROMPT =
             "You are FinSight, a concise personal-finance coach for early-career earners. " +
                 "Use only the numbers provided; never invent amounts, rates, products or guarantees. " +
+                "All amounts are in Philippine pesos (${Money.SYMBOL}); write them with the ${Money.SYMBOL} sign, never with a dollar sign. " +
                 "Plain text only, no markdown, no emojis."
     }
 }
@@ -152,16 +154,17 @@ object OutputCleaner {
 }
 
 /**
- * Hallucination guard for money: every dollar figure in a generated text must appear (at the same
+ * Hallucination guard for money: every money figure in a generated text must appear (at the same
  * value, or its rounded value) in the facts that were sent. Figures are the only machine-checkable
  * claim a finance nudge makes; wording is left to the model.
  */
 object NumberGuard {
-    private val dollar = Regex("""\$\s?([0-9][0-9,]*(?:\.[0-9]+)?)""")
+    // Peso is the app currency, written "₱" or "PHP"; a model that still writes "$" is checked the same way.
+    private val money = Regex("""(?:₱|\$|\bPHP)\s?([0-9][0-9,]*(?:\.[0-9]+)?)""", RegexOption.IGNORE_CASE)
 
     fun isGrounded(generated: String, facts: String): Boolean {
-        val allowed = dollar.findAll(facts).mapNotNull { it.groupValues[1].replace(",", "").toDoubleOrNull() }.toList()
-        return dollar.findAll(generated).all { match ->
+        val allowed = money.findAll(facts).mapNotNull { it.groupValues[1].replace(",", "").toDoubleOrNull() }.toList()
+        return money.findAll(generated).all { match ->
             val value = match.groupValues[1].replace(",", "").trimEnd('.').toDoubleOrNull() ?: return@all true
             allowed.any { kotlin.math.abs(it - value) < 0.51 }
         }

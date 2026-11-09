@@ -124,7 +124,7 @@ class FinSightDatabaseHelper(
 
             // Seed default settings
             val defaultSettings = mapOf(
-                "monthly_income" to "3200.0",
+                "monthly_income" to "45000.0",
                 "app_theme" to "DECK_EMERALD"
             )
             for ((key, value) in defaultSettings) {
@@ -278,8 +278,8 @@ class FinSightDatabaseHelper(
     }
 
     fun getMonthlyIncome(): Double {
-        val str = getSetting("monthly_income", "3200.0")
-        return str.toDoubleOrNull() ?: 3200.0
+        val str = getSetting("monthly_income", "45000.0")
+        return str.toDoubleOrNull() ?: 45000.0
     }
 
     fun setMonthlyIncome(income: Double) {

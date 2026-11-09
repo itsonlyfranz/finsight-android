@@ -21,7 +21,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -61,6 +60,7 @@ import com.example.finsightai.theme.TextSecondary
 import com.example.finsightai.ui.components.categoryColor
 import com.example.finsightai.ui.components.categoryIcon
 import com.example.finsightai.ui.viewmodel.FinSightViewModel
+import com.example.finsightai.util.Money
 import java.time.LocalDate
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -134,14 +134,10 @@ fun AddTransactionDialog(
                         amountText = it
                         errorMessage = null
                     },
-                    label = { Text("Amount ($)", color = TextSecondary) },
+                    label = { Text("Amount (${Money.SYMBOL})", color = TextSecondary) },
                     placeholder = { Text("0.00", color = TextMuted) },
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Filled.AttachMoney,
-                            contentDescription = null,
-                            tint = BrightEmerald
-                        )
+                        Text(Money.SYMBOL, color = BrightEmerald, fontWeight = FontWeight.Bold)
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -244,7 +240,7 @@ fun AddTransactionDialog(
                     }
                     val parsedAmount = amountText.toDoubleOrNull()
                     if (parsedAmount == null || parsedAmount <= 0.0) {
-                        errorMessage = "Please enter a valid amount greater than $0"
+                        errorMessage = "Please enter a valid amount greater than ${Money.format(0.0)}"
                         return@Button
                     }
 

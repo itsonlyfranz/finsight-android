@@ -71,6 +71,7 @@ import com.example.finsightai.theme.TextSecondary
 import com.example.finsightai.ui.components.categoryColor
 import com.example.finsightai.ui.components.categoryIcon
 import com.example.finsightai.ui.viewmodel.FinSightViewModel
+import com.example.finsightai.util.Money
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
@@ -240,7 +241,7 @@ fun TransactionHistoryScreen(
             },
             text = {
                 Text(
-                    text = "Are you sure you want to remove \"${tx.title}\" ($${formatCurrency(tx.amount)})?",
+                    text = "Are you sure you want to remove \"${tx.title}\" (${Money.format(tx.amount)})?",
                     color = TextSecondary
                 )
             },
@@ -444,7 +445,7 @@ private fun TransactionItemCard(
             ) {
                 val isIncome = !transaction.isExpense || transaction.category == TransactionCategory.SALARY
                 Text(
-                    text = "${if (isIncome) "+" else "-"}$${formatCurrency(transaction.amount)}",
+                    text = "${if (isIncome) "+" else "-"}${Money.format(transaction.amount)}",
                     style = MaterialTheme.typography.bodyLarge.copy(
                         fontWeight = FontWeight.Bold,
                         color = if (isIncome) BrightEmerald else TextPrimary
@@ -465,8 +466,4 @@ private fun TransactionItemCard(
             }
         }
     }
-}
-
-private fun formatCurrency(amount: Double): String {
-    return String.format(Locale.US, "%,.2f", amount)
 }
