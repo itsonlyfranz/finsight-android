@@ -124,6 +124,7 @@ class AiSetupE2ETest {
         h.downloader.release()
         waitForTag("error_${bonsai.id}")
         rule.onNodeWithTag("error_${bonsai.id}").assertIsDisplayed()
+            .assertTextContains("add a Hugging Face token", substring = true)
     }
 
     // ---- delete ----

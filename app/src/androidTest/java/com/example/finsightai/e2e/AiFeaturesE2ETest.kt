@@ -1,5 +1,7 @@
 package com.example.finsightai.e2e
 
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -106,6 +108,9 @@ class AiFeaturesE2ETest {
         rule.onNodeWithTag("tab_insights").performClick()
         rule.waitUntil(10_000) { count("insight_generated_by_") == 0 }
         assertInsightTextShown("High Cafe & Dining Velocity")
+        rule.onNodeWithTag("insight_description_insight_cafe_lifestyle_inflation")
+            .assert(hasText("Rewritten on-device by the fake model.", substring = true).not())
+        rule.onAllNodesWithText("Rewritten on-device by the fake model.", substring = true).assertCountEquals(0)
     }
 
     private fun useSignedInCodex() {
