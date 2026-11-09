@@ -1,6 +1,7 @@
 package com.example.finsightai.ui.viewmodel
 
 import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
@@ -266,20 +267,20 @@ class FinSightViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.goals.value.isEmpty())
 
-        assertFalse("blank name", viewModel.addGoal("  ", 1000.0, 0.0, "🎯", ""))
-        assertFalse("zero target", viewModel.addGoal("Trip", 0.0, 0.0, "🎯", ""))
-        assertFalse("NaN target", viewModel.addGoal("Trip", Double.NaN, 0.0, "🎯", ""))
-        assertFalse("negative saved", viewModel.addGoal("Trip", 1000.0, -1.0, "🎯", ""))
+        assertFalse("blank name", viewModel.addGoal("  ", 1000.0, 0.0))
+        assertFalse("zero target", viewModel.addGoal("Trip", 0.0, 0.0))
+        assertFalse("NaN target", viewModel.addGoal("Trip", Double.NaN, 0.0))
+        assertFalse("negative saved", viewModel.addGoal("Trip", 1000.0, -1.0))
         assertTrue(viewModel.goals.value.isEmpty())
 
-        assertTrue(viewModel.addGoal("  Trip  ", 20_000.0, 5_000.0, "", " Cebu "))
+        assertTrue(viewModel.addGoal("  Trip  ", 20_000.0, 5_000.0))
         val trip = viewModel.goals.value.single()
         assertEquals("Trip", trip.title)
         assertEquals(FinSightViewModel.DEFAULT_GOAL_ICON, trip.icon)
-        assertEquals("Cebu", trip.description)
+        assertEquals("", trip.description)
 
-        assertFalse(viewModel.updateGoal(trip, "", 1.0, 0.0, "🎯", ""))
-        assertTrue(viewModel.updateGoal(trip, "Big trip", 30_000.0, 6_000.0, "✈️", ""))
+        assertFalse(viewModel.updateGoal(trip, "", 1.0, 0.0))
+        assertTrue(viewModel.updateGoal(trip, "Big trip", 30_000.0, 6_000.0))
         advanceUntilIdle()
         assertEquals(trip.id, viewModel.goals.value.single().id)
         assertEquals("Big trip", viewModel.goals.value.single().title)
@@ -290,6 +291,20 @@ class FinSightViewModelTest {
         advanceUntilIdle()
         assertTrue(viewModel.goals.value.isEmpty())
         assertTrue(viewModel.simulationResult.value.goalProjections.isEmpty())
+    }
+
+    @Test
+    fun updateGoal_keepsTheStoredIconAndDescription() = runTest(testDispatcher) {
+        repository.addGoal(SavingsGoal("g1", "Laptop", 50_000.0, 1_000.0, "💻", "for school"))
+        advanceUntilIdle()
+        val laptop = viewModel.goals.value.single()
+
+        assertTrue(viewModel.updateGoal(laptop, "New laptop", 60_000.0, 2_000.0))
+        advanceUntilIdle()
+        val edited = viewModel.goals.value.single()
+        assertEquals("New laptop", edited.title)
+        assertEquals("💻", edited.icon)
+        assertEquals("for school", edited.description)
     }
 
     @Test

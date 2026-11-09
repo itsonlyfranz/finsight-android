@@ -376,23 +376,17 @@ class FinSightViewModel(
      * Adds a savings goal. Returns false (nothing written) for a blank title, a target that is not above
      * zero, or a saved-so-far amount that is negative or not finite.
      */
-    fun addGoal(title: String, targetAmount: Double, currentSaved: Double, icon: String, description: String): Boolean {
-        val goal = buildGoal(UUID.randomUUID().toString(), title, targetAmount, currentSaved, icon, description)
-            ?: return false
+    fun addGoal(title: String, targetAmount: Double, currentSaved: Double): Boolean {
+        val goal = buildGoal(UUID.randomUUID().toString(), title, targetAmount, currentSaved) ?: return false
         repository.addGoal(goal)
         return true
     }
 
-    /** Saves an edited goal, with the same validation as [addGoal]. */
-    fun updateGoal(
-        original: SavingsGoal,
-        title: String,
-        targetAmount: Double,
-        currentSaved: Double,
-        icon: String,
-        description: String
-    ): Boolean {
-        val goal = buildGoal(original.id, title, targetAmount, currentSaved, icon, description) ?: return false
+    /** Saves an edited goal, with the same validation as [addGoal]; its icon and description are kept. */
+    fun updateGoal(original: SavingsGoal, title: String, targetAmount: Double, currentSaved: Double): Boolean {
+        val goal = buildGoal(original.id, title, targetAmount, currentSaved)
+            ?.copy(icon = original.icon, description = original.description)
+            ?: return false
         repository.updateGoal(goal)
         return true
     }
@@ -401,14 +395,7 @@ class FinSightViewModel(
         repository.deleteGoal(id)
     }
 
-    private fun buildGoal(
-        id: String,
-        title: String,
-        targetAmount: Double,
-        currentSaved: Double,
-        icon: String,
-        description: String
-    ): SavingsGoal? {
+    private fun buildGoal(id: String, title: String, targetAmount: Double, currentSaved: Double): SavingsGoal? {
         val trimmedTitle = title.trim()
         if (trimmedTitle.isEmpty()) return null
         if (!targetAmount.isFinite() || targetAmount <= 0.0) return null
@@ -418,8 +405,8 @@ class FinSightViewModel(
             title = trimmedTitle,
             targetAmount = targetAmount,
             currentSaved = currentSaved,
-            icon = icon.ifBlank { DEFAULT_GOAL_ICON },
-            description = description.trim()
+            icon = DEFAULT_GOAL_ICON,
+            description = ""
         )
     }
 
@@ -437,7 +424,7 @@ class FinSightViewModel(
         if (monthlyIncome != null && (!monthlyIncome.isFinite() || monthlyIncome <= 0.0)) return false
         val wantsGoal = goalTitle.isNotBlank() || goalTarget != null
         val goal = if (wantsGoal) {
-            buildGoal(UUID.randomUUID().toString(), goalTitle, goalTarget ?: Double.NaN, 0.0, DEFAULT_GOAL_ICON, "")
+            buildGoal(UUID.randomUUID().toString(), goalTitle, goalTarget ?: Double.NaN, 0.0)
                 ?: return false
         } else {
             null

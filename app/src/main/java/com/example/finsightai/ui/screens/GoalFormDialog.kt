@@ -1,15 +1,10 @@
 package com.example.finsightai.ui.screens
 
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -29,7 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,28 +33,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.theme.BrightEmerald
 import com.example.finsightai.theme.CoralRed
 import com.example.finsightai.theme.EmeraldPrimary
 import com.example.finsightai.theme.SlateBorder
 import com.example.finsightai.theme.SlateSurface
-import com.example.finsightai.theme.SlateSurfaceVariant
 import com.example.finsightai.theme.TextMuted
 import com.example.finsightai.theme.TextPrimary
 import com.example.finsightai.theme.TextSecondary
 import com.example.finsightai.ui.viewmodel.FinSightViewModel
 import com.example.finsightai.util.Money
-
-/** Emoji a goal can wear; the first is the default. */
-private val GOAL_ICONS = listOf("🎯", "🛡️", "🏠", "🚗", "✈️", "💻", "🎓", "💍", "🎁", "🌴")
 
 /** Adds a new savings goal. */
 @Composable
@@ -69,8 +57,8 @@ fun AddGoalDialog(viewModel: FinSightViewModel, onDismiss: () -> Unit) {
         existing = null,
         onDismiss = onDismiss,
         onDelete = null,
-        onSave = { title, target, saved, icon, description ->
-            viewModel.addGoal(title, target, saved, icon, description)
+        onSave = { title, target, saved ->
+            viewModel.addGoal(title, target, saved)
         }
     )
 }
@@ -82,8 +70,8 @@ fun EditGoalDialog(viewModel: FinSightViewModel, goal: SavingsGoal, onDismiss: (
         existing = goal,
         onDismiss = onDismiss,
         onDelete = { viewModel.deleteGoal(goal.id) },
-        onSave = { title, target, saved, icon, description ->
-            viewModel.updateGoal(goal, title, target, saved, icon, description)
+        onSave = { title, target, saved ->
+            viewModel.updateGoal(goal, title, target, saved)
         }
     )
 }
@@ -92,20 +80,17 @@ fun EditGoalDialog(viewModel: FinSightViewModel, goal: SavingsGoal, onDismiss: (
  * The one form behind both goal dialogs. [onSave] gets validated, parsed values and returns false if it
  * refused them (the dialog then stays open). [onDelete] != null adds a delete button with a confirmation.
  */
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GoalFormDialog(
     existing: SavingsGoal?,
     onDismiss: () -> Unit,
     onDelete: (() -> Unit)?,
-    onSave: (title: String, target: Double, saved: Double, icon: String, description: String) -> Boolean
+    onSave: (title: String, target: Double, saved: Double) -> Boolean
 ) {
     val isEdit = existing != null
     var title by remember { mutableStateOf(existing?.title ?: "") }
     var targetText by remember { mutableStateOf(existing?.let { plainAmount(it.targetAmount) } ?: "") }
     var savedText by remember { mutableStateOf(existing?.let { plainAmount(it.currentSaved) } ?: "") }
-    var icon by remember { mutableStateOf(existing?.icon ?: GOAL_ICONS.first()) }
-    var description by remember { mutableStateOf(existing?.description ?: "") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var confirmingDelete by remember { mutableStateOf(false) }
 
@@ -162,42 +147,6 @@ private fun GoalFormDialog(
                     modifier = Modifier.fillMaxWidth().testTag("goal_saved"),
                     colors = goalFieldColors()
                 )
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = "Icon",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = TextSecondary, fontWeight = FontWeight.Medium)
-                    )
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        // An edited goal may carry an icon that is not in the list; keep it selectable.
-                        val choices = if (icon in GOAL_ICONS) GOAL_ICONS else listOf(icon) + GOAL_ICONS
-                        choices.forEach { candidate ->
-                            val selected = candidate == icon
-                            Surface(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .border(
-                                        width = if (selected) 2.dp else 1.dp,
-                                        color = if (selected) EmeraldPrimary else SlateBorder,
-                                        shape = RoundedCornerShape(10.dp)
-                                    )
-                                    .testTag("goal_icon_$candidate")
-                                    .clickable { icon = candidate },
-                                color = if (selected) EmeraldPrimary.copy(alpha = 0.2f) else SlateSurfaceVariant,
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Text(text = candidate, fontSize = 20.sp, modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp))
-                            }
-                        }
-                    }
-                }
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Note (optional)", color = TextSecondary) },
-                    maxLines = 2,
-                    modifier = Modifier.fillMaxWidth().testTag("goal_note"),
-                    colors = goalFieldColors()
-                )
                 if (errorMessage != null) {
                     Text(
                         text = errorMessage ?: "",
@@ -226,7 +175,7 @@ private fun GoalFormDialog(
                         target == null || target <= 0.0 ->
                             errorMessage = "Please enter a target amount greater than ${Money.format(0.0)}"
                         saved == null -> errorMessage = "Saved so far must be an amount, or left empty"
-                        onSave(title, target, saved, icon, description) -> onDismiss()
+                        onSave(title, target, saved) -> onDismiss()
                         else -> errorMessage = "Could not save this goal"
                     }
                 },
