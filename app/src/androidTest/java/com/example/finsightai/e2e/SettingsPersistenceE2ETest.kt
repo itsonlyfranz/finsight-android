@@ -69,20 +69,13 @@ class SettingsPersistenceE2ETest {
         rule.scrollToTag("ai_setup_list", "open_hf_search").performClick()
         rule.waitForTag("hf_token_saved")
         assertEquals("the token is never rendered", 0, rule.onAllNodesWithText("hf_persist_secret_123", substring = true).fetchSemanticsNodes().size)
-        val raw = app.context.getSharedPreferences("e2e_secrets_${secretsNamespace()}", 0).all.values.joinToString()
+        val raw = app.context.getSharedPreferences(app.secretsPrefsName, 0).all.values.joinToString()
         assertFalse("token must be encrypted at rest: $raw", raw.contains("hf_persist_secret_123"))
 
         rule.onNodeWithTag("hf_token_clear").performClick()
         rule.waitForTag("hf_token_field")
         restartIntoAiSetup()
         assertEquals(null, app.hfTokens.get())
-    }
-
-    /** The fixture namespaces its preference files; find the secrets file by suffix. */
-    private fun secretsNamespace(): String {
-        val dir = java.io.File(app.context.applicationInfo.dataDir, "shared_prefs")
-        val name = dir.listFiles().orEmpty().map { it.name }.first { it.startsWith("e2e_secrets_") }
-        return name.removePrefix("e2e_secrets_").removeSuffix(".xml")
     }
 
     @Test fun codexSignInAndTheChosenAccountModelSurviveARestart() {

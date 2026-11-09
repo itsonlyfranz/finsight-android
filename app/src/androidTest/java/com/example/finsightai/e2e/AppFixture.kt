@@ -30,13 +30,14 @@ class AppFixture(
     val hub: FakeHubServer? = null,
     /** Storage namespace; pass the same one from two test processes to share what is on disk. */
     namespace: String = "e2e${System.nanoTime()}",
-    /** False keeps whatever an earlier process left in the database. */
+    /** False keeps whatever an earlier process left on disk under [namespace]. */
     fresh: Boolean = true,
 ) {
     val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
     private val ns = namespace
     private val modelsDir = File(context.filesDir, "e2e-models-$ns")
     private val prefNames = listOf("models", "codex", "backend", "secrets").map { "e2e_${it}_$ns" }
+    val secretsPrefsName: String get() = prefNames[3]
     private val keyAlias = "finsight_e2e_key_$ns"
 
     /** The current graph's fakes; replaced by [newServices]. */
@@ -50,7 +51,7 @@ class AppFixture(
     lateinit var prefs: BackendPreferences
 
     init {
-        if (fresh) deleteDatabase()
+        if (fresh) wipeStorage()
         services = newServices()
     }
 
@@ -105,6 +106,10 @@ class AppFixture(
 
     fun cleanup() {
         AiServices.overrideForTest(null)
+        wipeStorage()
+    }
+
+    private fun wipeStorage() {
         deleteDatabase()
         modelsDir.deleteRecursively()
         prefNames.forEach { context.deleteSharedPreferences(it) }
