@@ -108,8 +108,11 @@ class FakeCodexGenerator(private val auth: CodexAuthManager, private val prefere
     override fun forget() = preference.forget()
     override suspend fun describe(): String? = if (auth.isSignedIn) "Codex (${preference.selected.value ?: "fake"})" else null
     override suspend fun isReady() = auth.isSignedIn
+    /** When set, [generate] fails with it, the way an expired plan or a 5xx from Codex would. */
+    @Volatile var failure: Exception? = null
     override suspend fun generate(request: AiRequest): GeneratedText {
         availableModels()
+        failure?.let { throw it }
         return GeneratedText("INSIGHT: Rewritten by Codex.\nACTION: Follow the Codex plan.", "Codex (${preference.selected.value})")
     }
 }

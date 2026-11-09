@@ -50,6 +50,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -96,6 +97,7 @@ fun DashboardScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
+            .testTag("dashboard_list")
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -235,6 +237,7 @@ private fun ThemeSelectorChip(
         Surface(
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
+                .testTag("theme_chip")
                 .clickable { expanded = true }
                 .border(
                     width = 1.dp,
@@ -293,6 +296,7 @@ private fun ThemeSelectorChip(
                 }
 
                 DropdownMenuItem(
+                    modifier = Modifier.testTag("theme_option_${theme.name}"),
                     text = {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -358,6 +362,7 @@ private fun SpendingSummaryCard(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "${Money.format(totalSpent)}",
+                        modifier = Modifier.testTag("dashboard_outflow"),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
@@ -373,6 +378,7 @@ private fun SpendingSummaryCard(
                 ) {
                     Text(
                         text = "Target: ${Money.format(monthlyIncome)}",
+                        modifier = Modifier.testTag("dashboard_target"),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = BrightEmerald,
                             fontWeight = FontWeight.Bold

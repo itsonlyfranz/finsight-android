@@ -41,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -118,7 +119,7 @@ fun AddTransactionDialog(
                     label = { Text("Title / Merchant", color = TextSecondary) },
                     placeholder = { Text("e.g. Philz Coffee, Keychron Keyboard", color = TextMuted) },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("tx_title"),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = EmeraldPrimary,
                         unfocusedBorderColor = SlateBorder,
@@ -141,7 +142,7 @@ fun AddTransactionDialog(
                     },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("tx_amount"),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = EmeraldPrimary,
                         unfocusedBorderColor = SlateBorder,
@@ -175,6 +176,7 @@ fun AddTransactionDialog(
                                         color = if (isSelected) catColor else SlateBorder,
                                         shape = RoundedCornerShape(10.dp)
                                     )
+                                    .testTag("tx_category_${category.name}")
                                     .clickable { selectedCategory = category },
                                 color = if (isSelected) catColor.copy(alpha = 0.2f) else SlateSurfaceVariant,
                                 shape = RoundedCornerShape(10.dp)
@@ -211,7 +213,7 @@ fun AddTransactionDialog(
                     placeholder = { Text("Split with roommate, impulse buy, etc.", color = TextMuted) },
                     singleLine = false,
                     maxLines = 3,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().testTag("tx_notes"),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = EmeraldPrimary,
                         unfocusedBorderColor = SlateBorder,
@@ -224,6 +226,7 @@ fun AddTransactionDialog(
                 if (errorMessage != null) {
                     Text(
                         text = errorMessage ?: "",
+                        modifier = Modifier.testTag("tx_error"),
                         color = CoralRed,
                         style = MaterialTheme.typography.bodySmall
                     )
@@ -232,6 +235,7 @@ fun AddTransactionDialog(
         },
         confirmButton = {
             Button(
+                modifier = Modifier.testTag("tx_save"),
                 onClick = {
                     val trimmedTitle = title.trim()
                     if (trimmedTitle.isEmpty()) {
@@ -269,7 +273,7 @@ fun AddTransactionDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("tx_cancel")) {
                 Text("Cancel", color = TextSecondary)
             }
         }
