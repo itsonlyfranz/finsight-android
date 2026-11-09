@@ -11,7 +11,7 @@
 
 </div>
 
-> **Upgrading from v1.0.0?** v1.1.0 is signed with a new release key, so uninstall v1.0.0 once before installing. After that, updates install normally. Existing data on an install keeps its saved amounts; to get the new peso (₱) demo data, clear the app's data (Settings → Apps → FinSight AI → Storage → Clear data).
+> **Upgrading from v1.0.0?** v1.1.0 is signed with a new release key, so uninstall v1.0.0 first. Uninstalling deletes the app's saved data on that phone; the new install starts with the peso (₱) demo data. Later updates signed with this key install over v1.1.0 and keep your saved amounts; to get the peso demo data then, clear the app's data (Settings → Apps → FinSight AI → Storage → Clear data).
 
 FinSight AI is a native Android application built with **Jetpack Compose**, **Material 3**, **SQLite on-device persistence**, and an on-device **AI Behavioral Insights & Forward Simulation Engine**. It bridges the gap between passive expense logging and active financial planning for young professionals facing early-career lifestyle inflation.
 
@@ -58,7 +58,7 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 ### 1. On-Device SQLite Persistence
 - Powered by `FinSightDatabaseHelper` managing `transactions`, `budgets`, and `settings` tables.
 - All changes persist permanently on device across app restarts.
-- Auto-seeds with the Mark Santos dataset on first launch: amounts are in Philippine pesos (₱) and sized to the persona's ₱45,000/month income. Existing installs keep their saved amounts; clear the app's data to get the peso demo data.
+- Auto-seeds with the Mark Santos dataset on first launch: amounts are in Philippine pesos (₱) and sized to the persona's ₱45,000/month income. Updating over v1.1.0 or later keeps saved amounts; clear the app's data to get the peso demo data. Upgrading from v1.0.0 requires an uninstall, which deletes saved data.
 
 ### 2. CSV Data Export & Sharing (From Impact-Effort Matrix)
 - Export transactions into RFC 4180-compliant CSV format with a single tap.
