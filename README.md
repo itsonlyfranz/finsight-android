@@ -96,11 +96,11 @@ All unit tests run via Gradle test runner:
 ```bash
 ./gradlew testDebugUnitTest
 ```
-- **166 JVM unit tests passing** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original core suites are:
-  - `AiInsightsEngineTest`: 6 tests
-  - `ForwardSimulatorEngineTest`: 7 tests
-  - `FinSightRepositoryTest`: 9 tests
-  - `FinSightViewModelTest`: 6 tests
+- **178 JVM unit tests** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original core suites are:
+  - `AiInsightsEngineTest`: 7 tests
+  - `ForwardSimulatorEngineTest`: 9 tests
+  - `FinSightRepositoryTest`: 12 tests
+  - `FinSightViewModelTest`: 12 tests
   - `CsvExporterTest`: 2 tests
   - `MainScreenViewModelTest`: 2 tests
 

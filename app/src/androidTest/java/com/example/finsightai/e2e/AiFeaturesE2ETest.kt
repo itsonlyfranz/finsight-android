@@ -89,8 +89,11 @@ class AiFeaturesE2ETest {
         rule.onNodeWithTag("tab_simulator").performClick()
         rule.onNodeWithTag("simulator_list").performScrollToNode(hasTestTag("sim_ai_explanation"))
         rule.waitUntil(15_000) { rule.onAllNodesWithTag("sim_generated_by").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithTag("simulator_list").performScrollToNode(hasTestTag("goals_section"))
-        rule.waitUntil(15_000) { count("goal_ai_context_") > 0 }
+        // The app ships no savings goals, so even with a model active the Simulator shows the
+        // empty goals state and no per-goal AI context.
+        rule.onNodeWithTag("simulator_list").performScrollToNode(hasTestTag("goals_empty"))
+        rule.onNodeWithTag("goals_empty").assertIsDisplayed()
+        assertEquals(0, count("goal_ai_context_"))
     }
 
     @Test fun deletingTheActiveModelRestoresDeterministicText() {
