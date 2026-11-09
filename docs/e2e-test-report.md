@@ -1,0 +1,65 @@
+# Full-app end-to-end test pass (v1.1.0)
+
+Instrumented Compose/Espresso coverage for every feature of the app, run on a dedicated emulator
+(`finsight_e2e_api36` on `emulator-5592`; the captain's emulator was never touched). The network is
+always faked: a local fake Hugging Face / download server (`FakeHubServer`, real HTTP + `Range`), a fake
+Codex device-code client, and a fake llama.cpp runtime. Everything else (activity, view models, SQLite,
+SharedPreferences, Keystore secrets, real `HttpHfApi` / `HttpModelDownloader`) is real.
+
+## Coverage map: what existed, what was added
+
+| Feature | Before this PR | Added here |
+|---|---|---|
+| Dashboard (profile, outflow, target, buffer, breakdown, links) | none (unit only for the view model) | `DashboardSimulatorE2ETest` |
+| Transactions: add | none | `TransactionsE2ETest` (expense, income, validation, cancel) |
+| Transactions: edit | none | **No edit screen exists in the app** (see findings). Repository edit is covered in `SqlitePersistenceE2ETest` |
+| Transactions: delete | none | `TransactionsE2ETest` (confirm / cancel, totals update) |
+| Transaction filters | none | `TransactionsE2ETest` (every category, All, empty state, survives tab switch) |
+| CSV export | `CsvExporterTest` (string only) | `TransactionsE2ETest`: the shared file's contents, numeric amounts, filter, escaping |
+| AI insights, rules fallback | `AiFeaturesE2ETest` | `CodexAndBackendsE2ETest`: no model, Codex signed out, Codex failing + recovery |
+| What-if simulator | unit only | `DashboardSimulatorE2ETest`: default levers, slider changes, baseline change after adding an expense |
+| Savings goals | unit only | `DashboardSimulatorE2ETest`: progress in pesos, timeline badges follow the freed cashflow |
+| Themes | none | `ThemesPersistenceE2ETest`: every theme, painted background, saved, all tabs |
+| Settings (theme, backend, HF token, Codex model) | partly (`AiSetupE2ETest`, in memory) | `SettingsPersistenceE2ETest` + `ProcessRestartE2ETest` on real storage |
+| Persistence: activity recreation | none | `ThemesPersistenceE2ETest`, `SettingsPersistenceE2ETest` |
+| Persistence: restart | none | in-app restart (new object graph, same disk) in the above; real process death via `scripts/e2e-process-restart.sh` |
+| Peso display | unit (`MoneyTest`) | no `$` on any screen (`DashboardSimulatorE2ETest`) |
+| On-device model picker / curated list | `AiSetupE2ETest` | unchanged |
+| HF search + compatibility filter | `AiSetupE2ETest` (fake `HfApi`) | `OnDeviceModelsE2ETest` over real HTTP: filter, empty, 500/429 recovery, token only sent when saved |
+| Model download, cancel, resume, retry | `AiSetupE2ETest` (fake downloader), `RealDownloadE2ETest`, `HttpModelDownloaderOnDeviceTest` | `OnDeviceModelsE2ETest`: tiny GGUF, verified bytes, cancel removes `.part`, `Range` resume, dropped-connection resume, checksum failure, 500 + retry, gated 401 + token |
+| Model select / delete (incl. active) | `AiSetupE2ETest` | `OnDeviceModelsE2ETest`: select moves badge, delete active falls back and keeps the other, insights revert, survives restart |
+| Codex sign-in / backend switching | `AiSetupE2ETest`, `AiFeaturesE2ETest` | `CodexAndBackendsE2ETest`, `SettingsPersistenceE2ETest`: via the real activity, model switch, sign-out, persisted sign-in |
+| R8 release smoke | `ReleaseShrinkSmokeTest` | re-run on the dedicated emulator |
+
+## Results (this branch)
+
+| Check | Result |
+|---|---|
+| `testDebugUnitTest` | 166 tests, 0 failures |
+| `lintDebug` | passes |
+| `connectedDebugAndroidTest` (debug, emulator-5592) | 97 tests, 0 failures (61 new, 36 existing) |
+| `scripts/e2e-process-restart.sh` (write, `am force-stop`, verify in a new process) | pass |
+| Shrunk release: launch + `ReleaseShrinkSmokeTest` (`-PciDebugSigning -PciReleaseTests`) | pass, 0 crashes in logcat |
+
+## Findings (not fixed here)
+
+1. **No way to edit a transaction.** `FinSightRepository.updateTransaction` exists but no view model
+   function or screen uses it. Needs a product decision (add an edit dialog, or drop "edit" from scope).
+2. **Deleting every transaction brings the demo data back on the next start.**
+   `FinSightDatabaseHelper.checkAndSeedIfEmpty` re-seeds whenever the table is empty (verified: 38 rows
+   after deleting all and reopening). A user who clears everything gets Mark Santos' demo data again.
+   Needs a decision (seed once, e.g. with a flag in `settings`).
+3. Minor: the insights engine still talks about a "401(k) employer match" for a peso/Philippine user;
+   the dashboard simulator card hard-codes "₱35,000+ in 12M".
+4. Minor UX: with the list scrolled so a row sits at the bottom edge, the Add Expense button covers that
+   row's delete icon (tests scroll the row to a clear position).
+5. Infra: CI's "Stop emulator" step runs `adb emu kill` on every emulator, so concurrent runs and
+   local emulators die (observed twice while writing this). Out of scope here (separate held task).
+   The `main` push run 42557240033 failed in "Smoke-test shrunk release on emulator", consistent with this.
+
+## Running it
+
+```
+SERIAL=emulator-5592 ANDROID_SERIAL=emulator-5592 bash gradlew connectedDebugAndroidTest
+SERIAL=emulator-5592 bash scripts/e2e-process-restart.sh
+```

@@ -109,6 +109,7 @@ Instrumented (emulator or device, arm64) UI and on-device tests, with the networ
 # optional real-model inference test: push any small GGUF first
 adb push Bonsai-1.7B-Q1_0.gguf /data/local/tmp/finsight-smoke.gguf
 ```
+The full-app end-to-end pass (coverage map, results, and the real process-death check `scripts/e2e-process-restart.sh`) is described in [docs/e2e-test-report.md](docs/e2e-test-report.md).
 
 ---
 

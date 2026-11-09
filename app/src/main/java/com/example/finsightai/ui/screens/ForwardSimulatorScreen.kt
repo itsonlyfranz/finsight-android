@@ -264,6 +264,7 @@ private fun ReductionSliderItem(
         }
 
         Slider(
+            modifier = Modifier.testTag("slider_${category.name}"),
             value = currentReduction,
             onValueChange = onValueChange,
             valueRange = 0f..0.50f, // 0% to 50% cutback
@@ -307,6 +308,7 @@ private fun ProjectionsSummaryCard(simulationResult: SimulationResult) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = "+${Money.format(simulationResult.monthlySavings)}/mo",
+                        modifier = Modifier.testTag("sim_monthly_freed"),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = BrightEmerald

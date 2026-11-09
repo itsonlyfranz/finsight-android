@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import com.example.finsightai.theme.EmeraldContainer
 import com.example.finsightai.util.CsvExporter
 import androidx.compose.material.icons.Icons
@@ -90,6 +91,7 @@ fun TransactionHistoryScreen(
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             ExtendedFloatingActionButton(
+                modifier = Modifier.testTag("fab_add"),
                 onClick = { showAddDialog = true },
                 containerColor = EmeraldPrimary,
                 contentColor = Color.Black,
@@ -122,6 +124,7 @@ fun TransactionHistoryScreen(
                         )
                     )
                     Text(
+                        modifier = Modifier.testTag("tx_count"),
                         text = "${filteredTransactions.size} recorded entries",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
@@ -129,6 +132,7 @@ fun TransactionHistoryScreen(
 
                 val context = LocalContext.current
                 OutlinedButton(
+                    modifier = Modifier.testTag("export_csv"),
                     onClick = {
                         CsvExporter.exportAndShareCsv(context, filteredTransactions)
                     },
@@ -170,6 +174,7 @@ fun TransactionHistoryScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .testTag("tx_empty")
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -200,7 +205,7 @@ fun TransactionHistoryScreen(
                 val groupedByDate = filteredTransactions.groupBy { it.date }
 
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().testTag("transactions_list"),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -247,6 +252,7 @@ fun TransactionHistoryScreen(
             },
             confirmButton = {
                 TextButton(
+                    modifier = Modifier.testTag("confirm_delete_tx"),
                     onClick = {
                         viewModel.deleteTransaction(tx.id)
                         transactionToDelete = null
@@ -256,7 +262,7 @@ fun TransactionHistoryScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { transactionToDelete = null }) {
+                TextButton(onClick = { transactionToDelete = null }, modifier = Modifier.testTag("cancel_delete_tx")) {
                     Text("Cancel", color = TextSecondary)
                 }
             }
@@ -286,6 +292,7 @@ private fun CategoryFilterBar(
                     color = if (isAllSelected) EmeraldPrimary else SlateBorder,
                     shape = RoundedCornerShape(20.dp)
                 )
+                .testTag("filter_all")
                 .clickable { onSelectCategory(null) },
             color = if (isAllSelected) EmeraldPrimary.copy(alpha = 0.2f) else SlateSurface,
             shape = RoundedCornerShape(20.dp)
@@ -312,6 +319,7 @@ private fun CategoryFilterBar(
                         color = if (isSelected) color else SlateBorder,
                         shape = RoundedCornerShape(20.dp)
                     )
+                    .testTag("filter_${category.name}")
                     .clickable { onSelectCategory(category) },
                 color = if (isSelected) color.copy(alpha = 0.2f) else SlateSurface,
                 shape = RoundedCornerShape(20.dp)
@@ -363,6 +371,7 @@ private fun TransactionItemCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("tx_${transaction.id}")
             .border(1.dp, SlateBorder, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = SlateSurface)
@@ -454,7 +463,7 @@ private fun TransactionItemCard(
 
                 IconButton(
                     onClick = onDelete,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(32.dp).testTag("delete_tx_${transaction.id}")
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,
