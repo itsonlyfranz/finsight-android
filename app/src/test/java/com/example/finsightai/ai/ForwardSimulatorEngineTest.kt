@@ -155,13 +155,9 @@ class ForwardSimulatorEngineTest {
             TransactionCategory.TECH_GADGETS to 5900.0,
             TransactionCategory.SUBSCRIPTIONS to 3496.0 // not part of the quick cut
         )
-        val monthly = (8800.0 + 5900.0) * 0.20
-        assertEquals(
-            simulator.calculateCompoundSavings(monthly, 12),
-            simulator.quickCutProjection(baseline),
-            0.01
-        )
-        assertTrue(simulator.quickCutProjection(baseline) > monthly * 12)
+        // 20% of 14,700 = 2,940/month; annuity-due future value at 4.5%/12 over 12 months:
+        // 2,940 * ((1.00375^12 - 1) / 0.00375) * 1.00375 = 36,151.89
+        assertEquals(36151.89, simulator.quickCutProjection(baseline), 0.01)
     }
 
     @Test

@@ -1,8 +1,8 @@
 package com.example.finsightai.ui.viewmodel
 
-import com.example.finsightai.ai.ForwardSimulatorEngine
 import com.example.finsightai.data.DefaultFinSightRepository
 import com.example.finsightai.testdata.SampleData
+import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -164,15 +164,29 @@ class FinSightViewModelTest {
     @Test
     fun quickCutProjection_isWorkedOutFromTheUsersOwnSpendingAndZeroWhenThereIsNone() = runTest(testDispatcher) {
         advanceUntilIdle()
-        // Sample data: PHP 8,800 cafes + PHP 5,900 tech, 20% of that saved monthly, compounded 12 months at 4.5%.
-        val expected = ForwardSimulatorEngine().calculateCompoundSavings(monthlyDeposit = (8800.0 + 5900.0) * 0.20, months = 12)
-        assertEquals(expected, viewModel.quickCutProjection12M.value, 0.01)
+        // Sample data: PHP 8,800 cafes + PHP 5,900 tech in one month, 20% = 2,940 saved monthly; annuity-due
+        // future value at 4.5%/12 over 12 months: 2,940 * ((1.00375^12 - 1) / 0.00375) * 1.00375 = 36,151.89.
+        assertEquals(36151.89, viewModel.quickCutProjection12M.value, 0.01)
 
         val empty = FinSightViewModel(DefaultFinSightRepository())
         advanceUntilIdle()
         assertEquals(0.0, empty.quickCutProjection12M.value, 0.0)
         assertTrue(empty.transactions.value.isEmpty())
         assertTrue(empty.insights.value.isEmpty())
+    }
+
+    @Test
+    fun quickCutProjection_usesAverageMonthlySpendingAcrossMultipleMonths() = runTest(testDispatcher) {
+        val repo = DefaultFinSightRepository()
+        val thisMonth = LocalDate.now().withDayOfMonth(1)
+        (0L..2L).forEach { back ->
+            repo.addTransaction(Transaction(title = "Cafe $back", amount = 3000.0, category = TransactionCategory.CAFES_DINING, date = thisMonth.minusMonths(back)))
+        }
+        val vm = FinSightViewModel(repo)
+        advanceUntilIdle()
+        // 9,000 over 3 months = 3,000/month, 20% = 600/month; 600 * ((1.00375^12 - 1) / 0.00375) * 1.00375 = 7,377.94
+        // (the all-time total would give 1,800/month and about 22,134).
+        assertEquals(7377.94, vm.quickCutProjection12M.value, 0.01)
     }
 
     @Test

@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+import java.time.YearMonth
 
 /** Progress of the optional generative layer on top of the deterministic engines, for the UI. */
 data class AiFeatureStatus(
@@ -124,15 +125,23 @@ class FinSightViewModel(
 
     /**
      * What a 20% cut in cafe/dining and tech spending would compound to in 12 months, worked out from the
-     * user's own spending (the Dashboard simulator card). 0.0 when there is nothing to cut.
+     * user's own average monthly spending (the Dashboard simulator card). 0.0 when there is nothing to cut.
      */
-    val quickCutProjection12M: StateFlow<Double> = categoryBreakdown
-        .map { quickCutEngine.quickCutProjection(it) }
+    val quickCutProjection12M: StateFlow<Double> = transactions
+        .map { quickCutEngine.quickCutProjection(averageMonthlySpending(it)) }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
-            initialValue = quickCutEngine.quickCutProjection(repository.getCategoryBreakdown())
+            initialValue = quickCutEngine.quickCutProjection(averageMonthlySpending(transactions.value))
         )
+
+    private fun averageMonthlySpending(list: List<Transaction>): Map<TransactionCategory, Double> {
+        val months = list.map { YearMonth.from(it.date) }.distinct().size
+        if (months == 0) return emptyMap()
+        return list.filter { it.isExpense && it.category != TransactionCategory.SALARY }
+            .groupBy { it.category }
+            .mapValues { (_, txs) -> txs.sumOf { it.amount } / months }
+    }
 
     val sliderReductions = MutableStateFlow<Map<TransactionCategory, Float>>(
         mapOf(
