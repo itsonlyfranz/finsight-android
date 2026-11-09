@@ -16,7 +16,7 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 ---
 
 ## 🎯 Target Audience & Persona
-- **Primary Persona**: **Mark Santos**, 24 years old, single. Junior Software Engineer at Apex Systems ($3,200/mo net income).
+- **Primary Persona**: **Mark Santos**, 24 years old, single. Junior Software Engineer at Apex Systems (₱45,000/mo net income).
 - **Core Challenge**: Struggles to maintain consistent savings due to lifestyle inflation, frequent cafe visits, and tech gadget impulse buys.
 - **POV**: *"Young professionals need actionable financial interpretation because raw transaction numbers fail to motivate lasting behavioral change."*
 
@@ -60,7 +60,7 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 - Interactive cutback sliders (Dining, Tech, Subscriptions).
 - Computes deterministic compound projections for 3, 6, and 12-month horizons.
 - **Financial Goals Countdown**: Dynamic countdowns for Emergency Reserve (3 months buffer), Dev Rig Setup, and Travel.
-- **AI Milestone Context**: Natural-language encouragement contextualizing saved dollars into tangible life wins.
+- **AI Milestone Context**: Natural-language encouragement contextualizing saved pesos into tangible life wins.
 
 ### 5. Multi-Theme Customizer
 - **Deck Emerald** (Default sleek slate & emerald green)
@@ -72,7 +72,7 @@ The deterministic engines above always compute the numbers and the default wordi
 - **On-device models** (llama.cpp, offline after download): Gemma 4 E2B, Bonsai (1-bit 1.7B, ternary 2B) and LFM 3 1.7B, all GGUF. Each card shows download size, RAM guidance, an installed-size line, **Use this model** and **Delete** (removes the files; deleting the active model falls back to the rules, or to Codex if selected). Downloads show progress, resume after a dropped connection, and cancelled/failed downloads remove their partial file.
 - **Hugging Face search**: finds more GGUF models, showing *only* those this app can run (supported architecture and quantization, one file up to 4 GB, no vision projectors / split / full-precision files). Optional Hugging Face token for gated repos, stored encrypted.
 - **Codex (ChatGPT account)**: sign in with the OpenAI device-code flow used by the Codex CLI; see [docs/codex-login-manual-test.md](docs/codex-login-manual-test.md).
-- A guard rejects any model output that mentions a dollar figure not present in the engine's facts, and any failure falls back to the rules text. Verified model repos/files/sizes: [docs/model-catalog-verification.md](docs/model-catalog-verification.md).
+- A guard rejects any model output that mentions a money figure (₱, PHP or $) not present in the engine's facts, and any failure falls back to the rules text. Verified model repos/files/sizes: [docs/model-catalog-verification.md](docs/model-catalog-verification.md).
 
 Build note: the on-device runtime is native code (llama.cpp **v0.9.0**, fetched by CMake at build time, arm64-v8a only). Building needs the Android NDK `28.2.13676358` and CMake `3.31.6` (`sdkmanager "ndk;28.2.13676358" "cmake;3.31.6"`) and network access to GitHub on the first build.
 
