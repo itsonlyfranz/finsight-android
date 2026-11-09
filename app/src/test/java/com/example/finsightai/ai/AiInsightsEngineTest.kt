@@ -181,15 +181,15 @@ class AiInsightsEngineTest {
         assertTrue("Should have growth focus insights", growthFocus.isNotEmpty())
         assertTrue("Should have tips", tips.isNotEmpty())
 
-        // Mark has 14 cafe visits + 6 dining outings ($620 total in CAFES_DINING)
+        // Mark has 14 cafe visits + 6 dining outings (₱620 total in CAFES_DINING)
         val cafeInsight = insights.find { it.id == "insight_cafe_lifestyle_inflation" }
         assertNotNull(cafeInsight)
 
-        // Mark spent $420 on Tech Gadgets (budget 250)
+        // Mark spent ₱420 on Tech Gadgets (budget 250)
         val techInsight = insights.find { it.id == "insight_tech_gadget_spike" }
         assertNotNull(techInsight)
 
-        // Mark spent $120 on Subscriptions
+        // Mark spent ₱120 on Subscriptions
         val subInsight = insights.find { it.id == "insight_subscription_drift" }
         assertNotNull(subInsight)
     }

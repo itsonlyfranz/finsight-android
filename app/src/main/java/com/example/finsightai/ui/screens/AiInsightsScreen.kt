@@ -65,7 +65,7 @@ import com.example.finsightai.theme.TextMuted
 import com.example.finsightai.theme.TextPrimary
 import com.example.finsightai.theme.TextSecondary
 import com.example.finsightai.ui.viewmodel.FinSightViewModel
-import java.util.Locale
+import com.example.finsightai.util.Money
 
 private enum class InsightFilterTab(val title: String) {
     ALL("All"),
@@ -297,7 +297,7 @@ private fun InsightCard(insight: AiInsight) {
 
                 if (insight.impactAmount != null && insight.impactAmount > 0) {
                     Text(
-                        text = "$${String.format(Locale.US, "%,.2f", insight.impactAmount)}",
+                        text = "${Money.format(insight.impactAmount)}",
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary

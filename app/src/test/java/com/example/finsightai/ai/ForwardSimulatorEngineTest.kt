@@ -37,7 +37,7 @@ class ForwardSimulatorEngineTest {
 
     @Test
     fun `simulate calculates compound savings accurately for cafe cutback`() {
-        // Mark Santos: $280 baseline on cafes, 20% reduction = $56/mo
+        // Mark Santos: ₱280 baseline on cafes, 20% reduction = ₱56/mo
         val baseline = mapOf(TransactionCategory.CAFES_DINING to 280.0)
         val reductions = mapOf(TransactionCategory.CAFES_DINING to 0.20f)
 
@@ -65,7 +65,7 @@ class ForwardSimulatorEngineTest {
     @Test
     fun `simulate generates tailored tech explanation for gadget reductions`() {
         val baseline = mapOf(TransactionCategory.TECH_GADGETS to 400.0)
-        val reductions = mapOf(TransactionCategory.TECH_GADGETS to 0.15f) // $60/mo
+        val reductions = mapOf(TransactionCategory.TECH_GADGETS to 0.15f) // ₱60/mo
 
         val result = simulator.simulate(
             baselineSpending = baseline,
@@ -84,8 +84,8 @@ class ForwardSimulatorEngineTest {
             TransactionCategory.TECH_GADGETS to 420.0
         )
         val reductions = mapOf(
-            TransactionCategory.CAFES_DINING to 0.20f, // $56
-            TransactionCategory.TECH_GADGETS to 0.15f  // $63
+            TransactionCategory.CAFES_DINING to 0.20f, // ₱56
+            TransactionCategory.TECH_GADGETS to 0.15f  // ₱63
         )
 
         val result = simulator.simulate(
@@ -93,7 +93,7 @@ class ForwardSimulatorEngineTest {
             targetReductions = reductions
         )
 
-        // $56 + $63 = $119/mo
+        // ₱56 + ₱63 = ₱119/mo
         assertEquals(119.0, result.monthlySavings, 0.01)
         assertTrue("12M projection should exceed 12 * 119 = 1428", result.projectedSavings12M > 1428.0)
         assertTrue(result.aiExplanation.contains("cafe visits"))
@@ -108,7 +108,7 @@ class ForwardSimulatorEngineTest {
 
     @Test
     fun `calculateMonthsToGoal computes accurate ceiling division with freed cashflow`() {
-        // Target $5,400, saved $2,100 -> remaining $3,300
+        // Target ₱5,400, saved ₱2,100 -> remaining ₱3,300
         // Base savings = 300, freed = 0 -> 3300 / 300 = 11 months
         val monthsBaseline = simulator.calculateMonthsToGoal(
             targetAmount = 5400.0,
@@ -118,7 +118,7 @@ class ForwardSimulatorEngineTest {
         )
         assertEquals(11, monthsBaseline)
 
-        // Freed cashflow = $178/mo -> pool = $478 -> ceil(3300 / 478) = 7 months
+        // Freed cashflow = ₱178/mo -> pool = ₱478 -> ceil(3300 / 478) = 7 months
         val monthsAccelerated = simulator.calculateMonthsToGoal(
             targetAmount = 5400.0,
             currentSaved = 2100.0,
@@ -140,12 +140,12 @@ class ForwardSimulatorEngineTest {
         val emergencyGoal = projections.find { it.goal.id == "goal_emergency" }
         assertNotNull(emergencyGoal)
         assertEquals(7, emergencyGoal!!.monthsToReach)
-        assertTrue(emergencyGoal.badgeText.contains("Reached in 7 months at +$178/mo"))
+        assertTrue(emergencyGoal.badgeText.contains("Reached in 7 months at +₱178/mo"))
         assertTrue(emergencyGoal.badgeText.contains("Funded by"))
 
         val devRigGoal = projections.find { it.goal.id == "goal_dev_rig" }
         assertNotNull(devRigGoal)
-        // Target $3200, saved $800 -> remaining $2400 / 478 = ceil(5.02) = 6 months
+        // Target ₱3200, saved ₱800 -> remaining ₱2400 / 478 = ceil(5.02) = 6 months
         assertEquals(6, devRigGoal!!.monthsToReach)
     }
 }

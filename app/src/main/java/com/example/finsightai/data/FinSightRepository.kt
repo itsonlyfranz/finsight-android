@@ -189,7 +189,7 @@ class DefaultFinSightRepository(
             val month = now.monthValue
 
             return listOf(
-                // 1. Income ($3,200)
+                // 1. Income (₱3,200)
                 Transaction(
                     id = "tx_salary_1",
                     title = "Apex Systems SWE Paycheck",
@@ -200,7 +200,7 @@ class DefaultFinSightRepository(
                     notes = "Monthly net direct deposit - Junior SWE"
                 ),
 
-                // 2. Rent ($950)
+                // 2. Rent (₱950)
                 Transaction(
                     id = "tx_rent_1",
                     title = "Apex Apartments Monthly Rent",
@@ -211,7 +211,7 @@ class DefaultFinSightRepository(
                     notes = "2B2B split with roommate"
                 ),
 
-                // 3. Cafe Visits ($280 across 14 transactions)
+                // 3. Cafe Visits (₱280 across 14 transactions)
                 Transaction(id = "tx_cafe_1", title = "Blue Bottle Pour Over & Pastry", amount = 18.50, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 2)),
                 Transaction(id = "tx_cafe_2", title = "Philz Mint Mojito Iced Coffee", amount = 7.25, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 3)),
                 Transaction(id = "tx_cafe_3", title = "Sightglass Espresso & Croissant", amount = 14.50, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 5)),
@@ -227,7 +227,7 @@ class DefaultFinSightRepository(
                 Transaction(id = "tx_cafe_13", title = "Four Barrel Espresso Bar", amount = 9.00, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 24)),
                 Transaction(id = "tx_cafe_14", title = "Sunday Roastery Batch Brew & Whole Beans", amount = 114.00, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 26)),
 
-                // 4. Dining Out ($340 across 6 outings)
+                // 4. Dining Out (₱340 across 6 outings)
                 Transaction(id = "tx_dining_1", title = "Ramen Nagi Rich Tonkotsu Dinner", amount = 45.00, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 4)),
                 Transaction(id = "tx_dining_2", title = "Sushi Omakase Lunch Special", amount = 85.00, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 11)),
                 Transaction(id = "tx_dining_3", title = "Engineering Team Hotpot Night", amount = 60.00, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 15)),
@@ -235,12 +235,12 @@ class DefaultFinSightRepository(
                 Transaction(id = "tx_dining_5", title = "Thai Basil Bistro Weekend Dinner", amount = 40.00, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 23)),
                 Transaction(id = "tx_dining_6", title = "Artisan Sourdough Pizza with Colleagues", amount = 75.00, category = TransactionCategory.CAFES_DINING, date = LocalDate.of(year, month, 27)),
 
-                // 5. Tech Gadgets ($420 across 3 items)
+                // 5. Tech Gadgets (₱420 across 3 items)
                 Transaction(id = "tx_tech_1", title = "Keychron Q1 Pro Mechanical Keyboard", amount = 210.00, category = TransactionCategory.TECH_GADGETS, date = LocalDate.of(year, month, 6), notes = "Banana switches upgrade"),
                 Transaction(id = "tx_tech_2", title = "CalDigit TS4 Thunderbolt Dock", amount = 160.00, category = TransactionCategory.TECH_GADGETS, date = LocalDate.of(year, month, 13), notes = "Dual monitor productivity"),
                 Transaction(id = "tx_tech_3", title = "Anker 737 GaN 24K Power Bank", amount = 50.00, category = TransactionCategory.TECH_GADGETS, date = LocalDate.of(year, month, 21), notes = "Remote cafe charging backup"),
 
-                // 6. Subscriptions ($120 across 7 recurring services)
+                // 6. Subscriptions (₱120 across 7 recurring services)
                 Transaction(id = "tx_sub_1", title = "GitHub Copilot Pro", amount = 20.00, category = TransactionCategory.SUBSCRIPTIONS, date = LocalDate.of(year, month, 2)),
                 Transaction(id = "tx_sub_2", title = "ChatGPT Plus", amount = 20.00, category = TransactionCategory.SUBSCRIPTIONS, date = LocalDate.of(year, month, 5)),
                 Transaction(id = "tx_sub_3", title = "Spotify Family Plan", amount = 17.00, category = TransactionCategory.SUBSCRIPTIONS, date = LocalDate.of(year, month, 9)),
@@ -249,13 +249,13 @@ class DefaultFinSightRepository(
                 Transaction(id = "tx_sub_6", title = "YouTube Premium", amount = 14.00, category = TransactionCategory.SUBSCRIPTIONS, date = LocalDate.of(year, month, 20)),
                 Transaction(id = "tx_sub_7", title = "NordVPN Monthly Equivalent", amount = 16.00, category = TransactionCategory.SUBSCRIPTIONS, date = LocalDate.of(year, month, 25)),
 
-                // 7. Groceries ($300 across 4 trips)
+                // 7. Groceries (₱300 across 4 trips)
                 Transaction(id = "tx_groc_1", title = "Trader Joe's Weekly Haul", amount = 115.00, category = TransactionCategory.GROCERIES, date = LocalDate.of(year, month, 3)),
                 Transaction(id = "tx_groc_2", title = "Whole Foods Organic Market", amount = 95.00, category = TransactionCategory.GROCERIES, date = LocalDate.of(year, month, 10)),
                 Transaction(id = "tx_groc_3", title = "Safeway Essentials & Snacks", amount = 60.00, category = TransactionCategory.GROCERIES, date = LocalDate.of(year, month, 17)),
                 Transaction(id = "tx_groc_4", title = "Farmer's Market Fresh Produce", amount = 30.00, category = TransactionCategory.GROCERIES, date = LocalDate.of(year, month, 24)),
 
-                // 8. Transport ($150)
+                // 8. Transport (₱150)
                 Transaction(id = "tx_trans_1", title = "Clipper Card Transit Auto-Reload", amount = 95.00, category = TransactionCategory.TRANSPORT, date = LocalDate.of(year, month, 4)),
                 Transaction(id = "tx_trans_2", title = "Uber Weekend Transit", amount = 55.00, category = TransactionCategory.TRANSPORT, date = LocalDate.of(year, month, 18))
             ).sortedByDescending { it.date }

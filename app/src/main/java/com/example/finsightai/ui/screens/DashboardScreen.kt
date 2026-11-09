@@ -75,7 +75,7 @@ import com.example.finsightai.theme.TextSecondary
 import com.example.finsightai.ui.components.categoryColor
 import com.example.finsightai.ui.components.categoryIcon
 import com.example.finsightai.ui.viewmodel.FinSightViewModel
-import java.util.Locale
+import com.example.finsightai.util.Money
 
 @Composable
 fun DashboardScreen(
@@ -357,7 +357,7 @@ private fun SpendingSummaryCard(
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "$${formatCurrency(totalSpent)}",
+                        text = "${Money.format(totalSpent)}",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
@@ -372,7 +372,7 @@ private fun SpendingSummaryCard(
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = "Target: $${formatCurrency(monthlyIncome)}",
+                        text = "Target: ${Money.format(monthlyIncome)}",
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = BrightEmerald,
                             fontWeight = FontWeight.Bold
@@ -401,7 +401,7 @@ private fun SpendingSummaryCard(
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                     Text(
-                        text = "$${formatCurrency(remainingBuffer)} buffer remaining",
+                        text = "${Money.format(remainingBuffer)} buffer remaining",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = BrightEmerald,
                             fontWeight = FontWeight.SemiBold
@@ -462,7 +462,7 @@ private fun SimulatorQuickActionCard(
                         )
                     )
                     Text(
-                        text = "Simulate 20% cafe & tech cuts compounding to $1,400+ in 12M",
+                        text = "Simulate 20% cafe & tech cuts compounding to ₱1,400+ in 12M",
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextSecondary
                         )
@@ -575,7 +575,7 @@ private fun CategoryRow(
 
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "$${formatCurrency(amount)}",
+                    text = "${Money.format(amount)}",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = TextPrimary,
                         fontWeight = FontWeight.SemiBold
@@ -719,8 +719,4 @@ private fun InsightPreviewItem(
             )
         }
     }
-}
-
-private fun formatCurrency(amount: Double): String {
-    return String.format(Locale.US, "%,.2f", amount)
 }

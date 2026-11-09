@@ -30,7 +30,7 @@ class FinSightRepositoryTest {
         assertEquals(950.0, rentTx?.amount ?: 0.0, 0.01)
 
         val breakdown = repository.getCategoryBreakdown()
-        // Mark has $280 in cafes + $340 dining = $620 in CAFES_DINING
+        // Mark has ₱280 in cafes + ₱340 dining = ₱620 in CAFES_DINING
         assertEquals(620.0, breakdown[TransactionCategory.CAFES_DINING] ?: 0.0, 0.01)
         assertEquals(420.0, breakdown[TransactionCategory.TECH_GADGETS] ?: 0.0, 0.01)
         assertEquals(120.0, breakdown[TransactionCategory.SUBSCRIPTIONS] ?: 0.0, 0.01)
@@ -91,7 +91,7 @@ class FinSightRepositoryTest {
         val simulation = repository.simulateSavings(
             mapOf(TransactionCategory.CAFES_DINING to 0.20f)
         )
-        // 20% of $620 = $124
+        // 20% of ₱620 = ₱124
         assertEquals(124.0, simulation.monthlySavings, 0.01)
         assertTrue(simulation.projectedSavings12M > 124 * 12)
         assertTrue(simulation.aiExplanation.isNotEmpty())

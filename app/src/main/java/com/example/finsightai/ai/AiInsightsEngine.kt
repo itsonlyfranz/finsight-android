@@ -5,6 +5,7 @@ import com.example.finsightai.model.InsightType
 import com.example.finsightai.model.Severity
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
+import com.example.finsightai.util.Money
 import java.util.Locale
 
 class AiInsightsEngine {
@@ -36,7 +37,7 @@ class AiInsightsEngine {
             }
 
             val desc = buildString {
-                append("You've recorded $cafeCount cafe & dining outings totaling $${formatAmount(cafeSpend)}")
+                append("You've recorded $cafeCount cafe & dining outings totaling ${Money.format(cafeSpend)}")
                 if (monthlyIncome > 0) {
                     append(" (~${formatPercent(cafeIncomePercent)}% of your monthly income)")
                 }
@@ -51,7 +52,7 @@ class AiInsightsEngine {
                     description = desc,
                     type = InsightType.RISK_NUDGE,
                     impactAmount = cafeSpend,
-                    actionSuggestion = "Try a 2-day homebrew routine during weekdays to reclaim ~$${formatAmount(savingsEstimate)}/mo while keeping social weekend brunches intact.",
+                    actionSuggestion = "Try a 2-day homebrew routine during weekdays to reclaim ~${Money.format(savingsEstimate)}/mo while keeping social weekend brunches intact.",
                     severity = severity
                 )
             )
@@ -71,8 +72,8 @@ class AiInsightsEngine {
                 AiInsight(
                     id = "insight_tech_gadget_spike",
                     title = "Tech & Gadget Spend Spike",
-                    description = "Tech purchases reached $${formatAmount(techSpend)} this cycle" +
-                        if (overage > 0) " ($${formatAmount(overage)} over your $${formatAmount(techBudget)} target)." else ".",
+                    description = "Tech purchases reached ${Money.format(techSpend)} this cycle" +
+                        if (overage > 0) " (${Money.format(overage)} over your ${Money.format(techBudget)} target)." else ".",
                     type = InsightType.RISK_NUDGE,
                     impactAmount = techSpend,
                     actionSuggestion = "Adopt a 14-day cooling-off rule on new peripherals and mechanical keyboards to avoid dopamine impulse buys.",
@@ -90,10 +91,10 @@ class AiInsightsEngine {
                 AiInsight(
                     id = "insight_subscription_drift",
                     title = "Recurring Subscription Drift",
-                    description = "Monthly recurring subscriptions currently sit at $${formatAmount(subSpend)}. Overlapping media or AI coding copilot tools add up fast.",
+                    description = "Monthly recurring subscriptions currently sit at ${Money.format(subSpend)}. Overlapping media or AI coding copilot tools add up fast.",
                     type = InsightType.RISK_NUDGE,
                     impactAmount = subSpend,
-                    actionSuggestion = "Audit active tools and downgrade duplicate streaming or SaaS subscriptions to free up ~$30-$40/mo.",
+                    actionSuggestion = "Audit active tools and downgrade duplicate streaming or SaaS subscriptions to free up ~₱30-₱40/mo.",
                     severity = Severity.LOW
                 )
             )
@@ -116,7 +117,7 @@ class AiInsightsEngine {
             AiInsight(
                 id = "insight_emergency_fund_status",
                 title = "Emergency Fund on Track: ${formatMonths(emergencyMonths)} Months",
-                description = "Your essential overhead (rent, groceries, commute) is ~$${formatAmount(baselineEssentials)}/mo. You currently retain $${formatAmount(netSavings)} in monthly free cashflow.",
+                description = "Your essential overhead (rent, groceries, commute) is ~${Money.format(baselineEssentials)}/mo. You currently retain ${Money.format(netSavings)} in monthly free cashflow.",
                 type = InsightType.GROWTH_FOCUS,
                 impactAmount = netSavings,
                 actionSuggestion = "Maintain 3-6 months of liquid reserves in a 4.5%+ APY High-Yield Savings Account before scaling aggressive investments.",
@@ -134,10 +135,10 @@ class AiInsightsEngine {
             AiInsight(
                 id = "insight_discretionary_growth",
                 title = "Discretionary Spending Pacing",
-                description = "Discretionary spend is $${formatAmount(discretionarySpend)}. You are successfully routing ${formatPercent(savingsRate)}% of your earnings to wealth accumulation.",
+                description = "Discretionary spend is ${Money.format(discretionarySpend)}. You are successfully routing ${formatPercent(savingsRate)}% of your earnings to wealth accumulation.",
                 type = InsightType.GROWTH_FOCUS,
                 impactAmount = discretionarySpend,
-                actionSuggestion = "Automate an auto-transfer of $${formatAmount(netSavings * 0.7)} into your savings on every direct deposit date.",
+                actionSuggestion = "Automate an auto-transfer of ${Money.format(netSavings * 0.7)} into your savings on every direct deposit date.",
                 severity = Severity.LOW
             )
         )
@@ -170,7 +171,6 @@ class AiInsightsEngine {
         return insights
     }
 
-    private fun formatAmount(amount: Double): String = String.format(Locale.US, "%.2f", amount)
     private fun formatPercent(percent: Double): String = String.format(Locale.US, "%.1f", percent)
     private fun formatMonths(months: Double): String = String.format(Locale.US, "%.1f", months)
 }

@@ -4,6 +4,7 @@ import com.example.finsightai.model.GoalProjection
 import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.TransactionCategory
+import com.example.finsightai.util.Money
 import java.time.LocalDate
 import java.util.Locale
 import kotlin.math.ceil
@@ -97,11 +98,11 @@ class ForwardSimulatorEngine(
             val targetDate = referenceDate.plusMonths(months.toLong())
             val monthName = targetDate.month.name.lowercase(Locale.US).replaceFirstChar { it.uppercase(Locale.US) }
             val formattedTargetDate = "$monthName ${targetDate.year}"
-            val formattedFreed = String.format(Locale.US, "%.0f", freedMonthlyCashflow)
+            val formattedFreed = Money.formatWhole(freedMonthlyCashflow)
 
             val badgeText = when {
                 months == 0 -> "Goal Fully Funded! 🎉"
-                freedMonthlyCashflow > 0.0 -> "Reached in $months months at +$$formattedFreed/mo • Funded by $formattedTargetDate!"
+                freedMonthlyCashflow > 0.0 -> "Reached in $months months at +$formattedFreed/mo • Funded by $formattedTargetDate!"
                 else -> "Reached in $months months at baseline • Funded by $formattedTargetDate"
             }
 
@@ -144,27 +145,27 @@ class ForwardSimulatorEngine(
         val techSaved = categorySavings[TransactionCategory.TECH_GADGETS] ?: 0.0
         val subSaved = categorySavings[TransactionCategory.SUBSCRIPTIONS] ?: 0.0
 
-        val formattedMonthly = String.format(Locale.US, "%.0f", monthlySavings)
-        val formatted12M = String.format(Locale.US, "%.0f", projected12M)
+        val formattedMonthly = Money.formatWhole(monthlySavings)
+        val formatted12M = Money.formatWhole(projected12M)
 
         return when {
             cafeSaved > 0 && techSaved > 0 -> {
                 val cafeVisits = maxOf(1, (cafeSaved / 28.0).roundToInt() * 2)
-                "By cutting back $cafeVisits cafe visits per week and moderating tech impulse upgrades ($$formattedMonthly/mo), you'll accumulate $$formatted12M in 12 months — building a formidable emergency tech reserve without sacrificing weekend leisure."
+                "By cutting back $cafeVisits cafe visits per week and moderating tech impulse upgrades ($formattedMonthly/mo), you'll accumulate $formatted12M in 12 months — building a formidable emergency tech reserve without sacrificing weekend leisure."
             }
             cafeSaved > 0 && techSaved <= 0.1 -> {
                 val cafeVisits = maxOf(1, (cafeSaved / 28.0).roundToInt() * 2)
-                "By cutting back $cafeVisits cafe visits per week ($$formattedMonthly/mo), you'll accumulate $$formatted12M in 12 months — enough for your emergency tech reserve without sacrificing weekend leisure."
+                "By cutting back $cafeVisits cafe visits per week ($formattedMonthly/mo), you'll accumulate $formatted12M in 12 months — enough for your emergency tech reserve without sacrificing weekend leisure."
             }
             techSaved > 0 && cafeSaved <= 0.1 -> {
                 val techReductionPct = ((targetReductions[TransactionCategory.TECH_GADGETS] ?: 0.15f) * 100).toInt()
-                "By pacing tech gadget upgrades by $techReductionPct% ($$formattedMonthly/mo), you'll accumulate $$formatted12M in 12 months — keeping your hardware fresh while funding a high-yield safety net."
+                "By pacing tech gadget upgrades by $techReductionPct% ($formattedMonthly/mo), you'll accumulate $formatted12M in 12 months — keeping your hardware fresh while funding a high-yield safety net."
             }
             subSaved > 0 -> {
-                "By pruning redundant cloud and media subscriptions ($$formattedMonthly/mo), you'll accumulate $$formatted12M in 12 months with effortless compound returns."
+                "By pruning redundant cloud and media subscriptions ($formattedMonthly/mo), you'll accumulate $formatted12M in 12 months with effortless compound returns."
             }
             else -> {
-                "By optimizing your monthly discretionary expenses ($$formattedMonthly/mo), you'll accumulate $$formatted12M in 12 months — strengthening your financial independence as an early-career engineer."
+                "By optimizing your monthly discretionary expenses ($formattedMonthly/mo), you'll accumulate $formatted12M in 12 months — strengthening your financial independence as an early-career engineer."
             }
         }
     }
