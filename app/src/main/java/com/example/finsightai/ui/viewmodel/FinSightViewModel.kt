@@ -14,6 +14,7 @@ import com.example.finsightai.ai.backend.EffectiveBackend
 import com.example.finsightai.data.DefaultFinSightRepository
 import com.example.finsightai.data.FinSightRepository
 import com.example.finsightai.model.AiInsight
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
@@ -36,6 +37,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
+import java.util.UUID
 import java.time.YearMonth
 
 /** Progress of the optional generative layer on top of the deterministic engines, for the UI. */
@@ -96,6 +98,9 @@ class FinSightViewModel(
         initialValue = repository.insights.value
     )
     val monthlyIncome: StateFlow<Double> = repository.monthlyIncome
+    val goals: StateFlow<List<SavingsGoal>> = repository.goals
+    val userName: StateFlow<String> = repository.userName
+    val onboardingCompleted: StateFlow<Boolean> = repository.onboardingCompleted
     val appTheme: StateFlow<AppTheme> = repository.currentTheme
 
     val totalSpent: StateFlow<Double> = transactions
@@ -171,8 +176,9 @@ class FinSightViewModel(
 
     private val deterministicSimulation: StateFlow<SimulationResult> = combine(
         categoryBreakdown,
-        sliderReductions
-    ) { _, reductions ->
+        sliderReductions,
+        repository.goals
+    ) { _, reductions, _ ->
         repository.simulateSavings(reductions)
     }.stateIn(
         scope = viewModelScope,
@@ -283,7 +289,9 @@ class FinSightViewModel(
 
     private fun signatureOf(result: SimulationResult): String =
         "${result.targetReductions.toSortedMap(compareBy { it.name })}|${result.monthlySavings}|" +
-            result.goalProjections.joinToString(",") { "${it.goal.id}:${it.monthsToReach}" }
+            result.goalProjections.joinToString(",") {
+                "${it.goal.id}:${it.goal.title}:${it.goal.targetAmount}:${it.goal.currentSaved}:${it.monthsToReach}"
+            }
 
     fun addTransaction(
         title: String,
@@ -349,8 +357,107 @@ class FinSightViewModel(
         repository.updateTheme(theme)
     }
 
+    /**
+     * Sets the monthly income the dashboard, insights and simulator work from. Returns false (and
+     * changes nothing) unless [income] is a finite amount above zero.
+     */
+    fun setMonthlyIncome(income: Double): Boolean {
+        if (!income.isFinite() || income <= 0.0) return false
+        repository.updateMonthlyIncome(income)
+        return true
+    }
+
+    /** Saves the name the dashboard greets; a blank name clears it (the greeting falls back to "Welcome back"). */
+    fun setUserName(name: String) {
+        repository.updateUserName(name)
+    }
+
+    /**
+     * Adds a savings goal. Returns false (nothing written) for a blank title, a target that is not above
+     * zero, or a saved-so-far amount that is negative or not finite.
+     */
+    fun addGoal(title: String, targetAmount: Double, currentSaved: Double, icon: String, description: String): Boolean {
+        val goal = buildGoal(UUID.randomUUID().toString(), title, targetAmount, currentSaved, icon, description)
+            ?: return false
+        repository.addGoal(goal)
+        return true
+    }
+
+    /** Saves an edited goal, with the same validation as [addGoal]. */
+    fun updateGoal(
+        original: SavingsGoal,
+        title: String,
+        targetAmount: Double,
+        currentSaved: Double,
+        icon: String,
+        description: String
+    ): Boolean {
+        val goal = buildGoal(original.id, title, targetAmount, currentSaved, icon, description) ?: return false
+        repository.updateGoal(goal)
+        return true
+    }
+
+    fun deleteGoal(id: String) {
+        repository.deleteGoal(id)
+    }
+
+    private fun buildGoal(
+        id: String,
+        title: String,
+        targetAmount: Double,
+        currentSaved: Double,
+        icon: String,
+        description: String
+    ): SavingsGoal? {
+        val trimmedTitle = title.trim()
+        if (trimmedTitle.isEmpty()) return null
+        if (!targetAmount.isFinite() || targetAmount <= 0.0) return null
+        if (!currentSaved.isFinite() || currentSaved < 0.0) return null
+        return SavingsGoal(
+            id = id,
+            title = trimmedTitle,
+            targetAmount = targetAmount,
+            currentSaved = currentSaved,
+            icon = icon.ifBlank { DEFAULT_GOAL_ICON },
+            description = description.trim()
+        )
+    }
+
+    /**
+     * Ends the first-launch intro and never shows it again. With [monthlyIncome] / [name] / the goal
+     * fields it first saves what was entered; call it with no arguments to skip and keep the defaults.
+     * Returns false, leaving the intro open, if the income or the goal is invalid.
+     */
+    fun finishOnboarding(
+        monthlyIncome: Double? = null,
+        name: String = "",
+        goalTitle: String = "",
+        goalTarget: Double? = null
+    ): Boolean {
+        if (monthlyIncome != null && (!monthlyIncome.isFinite() || monthlyIncome <= 0.0)) return false
+        val wantsGoal = goalTitle.isNotBlank() || goalTarget != null
+        val goal = if (wantsGoal) {
+            buildGoal(UUID.randomUUID().toString(), goalTitle, goalTarget ?: Double.NaN, 0.0, DEFAULT_GOAL_ICON, "")
+                ?: return false
+        } else {
+            null
+        }
+
+        if (monthlyIncome != null) repository.updateMonthlyIncome(monthlyIncome)
+        if (name.isNotBlank()) repository.updateUserName(name)
+        if (goal != null) repository.addGoal(goal)
+        repository.completeOnboarding()
+        return true
+    }
+
+    /** Leaves the intro without changing anything: income stays at its default and no name or goal is saved. */
+    fun skipOnboarding() {
+        repository.completeOnboarding()
+    }
+
     companion object {
         private const val SIMULATION_DEBOUNCE_MS = 700L
+        const val DEFAULT_GOAL_ICON = "🎯"
 
         fun factory(context: Context): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

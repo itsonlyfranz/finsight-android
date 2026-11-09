@@ -5,6 +5,7 @@ import android.content.Context
 import android.database.Cursor
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
 import java.time.LocalDate
@@ -16,7 +17,7 @@ class FinSightDatabaseHelper(
 
     companion object {
         const val DATABASE_NAME = "finsight_ai.db"
-        const val DATABASE_VERSION = 1
+        const val DATABASE_VERSION = 2
         const val DEFAULT_MONTHLY_INCOME = 45000.0
 
         const val TABLE_TRANSACTIONS = "transactions"
@@ -35,6 +36,32 @@ class FinSightDatabaseHelper(
         const val TABLE_SETTINGS = "settings"
         const val COL_SETTING_KEY = "key"
         const val COL_SETTING_VALUE = "value"
+
+        const val TABLE_GOALS = "savings_goals"
+        const val COL_GOAL_ID = "id"
+        const val COL_GOAL_TITLE = "title"
+        const val COL_GOAL_TARGET = "target_amount"
+        const val COL_GOAL_SAVED = "current_saved"
+        const val COL_GOAL_ICON = "icon"
+        const val COL_GOAL_DESCRIPTION = "description"
+        /** Insertion order, so goals list in the order they were added. */
+        const val COL_GOAL_CREATED = "created_at"
+
+        const val SETTING_MONTHLY_INCOME = "monthly_income"
+        const val SETTING_USER_NAME = "user_name"
+        const val SETTING_ONBOARDING_COMPLETED = "onboarding_completed"
+
+        private const val CREATE_GOALS_TABLE = """
+            CREATE TABLE IF NOT EXISTS $TABLE_GOALS (
+                $COL_GOAL_ID TEXT PRIMARY KEY,
+                $COL_GOAL_TITLE TEXT NOT NULL,
+                $COL_GOAL_TARGET REAL NOT NULL,
+                $COL_GOAL_SAVED REAL NOT NULL,
+                $COL_GOAL_ICON TEXT NOT NULL,
+                $COL_GOAL_DESCRIPTION TEXT NOT NULL,
+                $COL_GOAL_CREATED INTEGER NOT NULL
+            )
+        """
     }
 
     override fun onCreate(db: SQLiteDatabase) {
@@ -70,14 +97,20 @@ class FinSightDatabaseHelper(
             """.trimIndent()
         )
 
+        db.execSQL(CREATE_GOALS_TABLE.trimIndent())
+
         seedDefaults(db)
     }
 
+    /**
+     * Upgrades only ever add: no table is dropped and no existing row is rewritten, so an installed
+     * app keeps its transactions, budgets, settings and theme.
+     *  - v1 -> v2: adds the savings-goals table.
+     */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_TRANSACTIONS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_BUDGETS")
-        db.execSQL("DROP TABLE IF EXISTS $TABLE_SETTINGS")
-        onCreate(db)
+        if (oldVersion < 2) {
+            db.execSQL(CREATE_GOALS_TABLE.trimIndent())
+        }
     }
 
     /**
@@ -101,7 +134,7 @@ class FinSightDatabaseHelper(
 
             // Default settings
             val defaultSettings = mapOf(
-                "monthly_income" to DEFAULT_MONTHLY_INCOME.toString(),
+                SETTING_MONTHLY_INCOME to DEFAULT_MONTHLY_INCOME.toString(),
                 "app_theme" to "DECK_EMERALD"
             )
             for ((key, value) in defaultSettings) {
@@ -255,11 +288,82 @@ class FinSightDatabaseHelper(
     }
 
     fun getMonthlyIncome(): Double {
-        val str = getSetting("monthly_income", DEFAULT_MONTHLY_INCOME.toString())
+        val str = getSetting(SETTING_MONTHLY_INCOME, DEFAULT_MONTHLY_INCOME.toString())
         return str.toDoubleOrNull() ?: DEFAULT_MONTHLY_INCOME
     }
 
     fun setMonthlyIncome(income: Double) {
-        setSetting("monthly_income", income.toString())
+        setSetting(SETTING_MONTHLY_INCOME, income.toString())
+    }
+
+    /** True once a setting has been written under [key] (as opposed to merely defaulting). */
+    fun hasSetting(key: String): Boolean {
+        val cursor = readableDatabase.query(
+            TABLE_SETTINGS, arrayOf(COL_SETTING_KEY), "$COL_SETTING_KEY = ?", arrayOf(key), null, null, null
+        )
+        return cursor.use { it.moveToFirst() }
+    }
+
+    fun getUserName(): String = getSetting(SETTING_USER_NAME, "")
+
+    fun setUserName(name: String) {
+        setSetting(SETTING_USER_NAME, name)
+    }
+
+    /** Null when the user has never finished or skipped the intro (no setting written yet). */
+    fun getOnboardingCompleted(): Boolean? =
+        if (hasSetting(SETTING_ONBOARDING_COMPLETED)) {
+            getSetting(SETTING_ONBOARDING_COMPLETED, "false") == "true"
+        } else {
+            null
+        }
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        setSetting(SETTING_ONBOARDING_COMPLETED, completed.toString())
+    }
+
+    // CRUD operations: Savings goals
+    fun getAllGoals(): List<SavingsGoal> {
+        val list = mutableListOf<SavingsGoal>()
+        val cursor = readableDatabase.query(
+            TABLE_GOALS, null, null, null, null, null, "$COL_GOAL_CREATED ASC, rowid ASC"
+        )
+        cursor.use {
+            while (it.moveToNext()) {
+                list.add(
+                    SavingsGoal(
+                        id = it.getString(it.getColumnIndexOrThrow(COL_GOAL_ID)),
+                        title = it.getString(it.getColumnIndexOrThrow(COL_GOAL_TITLE)),
+                        targetAmount = it.getDouble(it.getColumnIndexOrThrow(COL_GOAL_TARGET)),
+                        currentSaved = it.getDouble(it.getColumnIndexOrThrow(COL_GOAL_SAVED)),
+                        icon = it.getString(it.getColumnIndexOrThrow(COL_GOAL_ICON)),
+                        description = it.getString(it.getColumnIndexOrThrow(COL_GOAL_DESCRIPTION))
+                    )
+                )
+            }
+        }
+        return list
+    }
+
+    fun insertGoal(goal: SavingsGoal) {
+        val cv = goalValues(goal).apply { put(COL_GOAL_CREATED, System.currentTimeMillis()) }
+        writableDatabase.insertWithOnConflict(TABLE_GOALS, null, cv, SQLiteDatabase.CONFLICT_REPLACE)
+    }
+
+    fun updateGoal(goal: SavingsGoal) {
+        writableDatabase.update(TABLE_GOALS, goalValues(goal), "$COL_GOAL_ID = ?", arrayOf(goal.id))
+    }
+
+    fun deleteGoal(id: String) {
+        writableDatabase.delete(TABLE_GOALS, "$COL_GOAL_ID = ?", arrayOf(id))
+    }
+
+    private fun goalValues(goal: SavingsGoal) = ContentValues().apply {
+        put(COL_GOAL_ID, goal.id)
+        put(COL_GOAL_TITLE, goal.title)
+        put(COL_GOAL_TARGET, goal.targetAmount)
+        put(COL_GOAL_SAVED, goal.currentSaved)
+        put(COL_GOAL_ICON, goal.icon)
+        put(COL_GOAL_DESCRIPTION, goal.description)
     }
 }

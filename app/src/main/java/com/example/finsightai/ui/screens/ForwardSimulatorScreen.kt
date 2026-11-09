@@ -13,16 +13,23 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Savings
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -30,6 +37,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -40,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.material3.LinearProgressIndicator
 import com.example.finsightai.model.GoalProjection
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.TransactionCategory
 import com.example.finsightai.theme.BrightEmerald
@@ -67,6 +78,15 @@ fun ForwardSimulatorScreen(
     val simulationResult by viewModel.simulationResult.collectAsStateWithLifecycle()
     val sliderReductions by viewModel.sliderReductions.collectAsStateWithLifecycle()
     val categoryBreakdown by viewModel.categoryBreakdown.collectAsStateWithLifecycle()
+    var showAddGoal by remember { mutableStateOf(false) }
+    var editingGoal by remember { mutableStateOf<SavingsGoal?>(null) }
+
+    if (showAddGoal) {
+        AddGoalDialog(viewModel = viewModel, onDismiss = { showAddGoal = false })
+    }
+    editingGoal?.let { goal ->
+        EditGoalDialog(viewModel = viewModel, goal = goal, onDismiss = { editingGoal = null })
+    }
 
     LazyColumn(
         modifier = modifier
@@ -101,16 +121,16 @@ fun ForwardSimulatorScreen(
         if (simulationResult.goalProjections.isNotEmpty()) {
             item {
                 Box(modifier = Modifier.testTag("goals_section")) {
-                    FinancialGoalsCountdownSection(goalProjections = simulationResult.goalProjections)
+                    FinancialGoalsCountdownSection(
+                        goalProjections = simulationResult.goalProjections,
+                        onAddGoal = { showAddGoal = true },
+                        onEditGoal = { editingGoal = it }
+                    )
                 }
             }
         } else {
             item {
-                Text(
-                    text = "No savings goals yet. Once you have goals, this section will show how your cutbacks speed them up.",
-                    modifier = Modifier.testTag("goals_empty"),
-                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
-                )
+                EmptyGoalsInvite(onAddGoal = { showAddGoal = true })
             }
         }
 
@@ -493,7 +513,47 @@ private fun AiContextCard(aiExplanation: String, generatedBy: String? = null) {
 }
 
 @Composable
-private fun FinancialGoalsCountdownSection(goalProjections: List<GoalProjection>) {
+private fun EmptyGoalsInvite(onAddGoal: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, SlateBorder, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = SlateSurface)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "🎯 Financial Goals Countdown",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, color = TextPrimary)
+            )
+            Text(
+                text = "No savings goals yet. Add one and this section will show how your cutbacks speed it up.",
+                modifier = Modifier.testTag("goals_empty"),
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+            )
+            Button(
+                onClick = onAddGoal,
+                modifier = Modifier.testTag("goal_add"),
+                colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary, contentColor = androidx.compose.ui.graphics.Color.Black),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Add a goal", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+private fun FinancialGoalsCountdownSection(
+    goalProjections: List<GoalProjection>,
+    onAddGoal: () -> Unit,
+    onEditGoal: (SavingsGoal) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -521,14 +581,25 @@ private fun FinancialGoalsCountdownSection(goalProjections: List<GoalProjection>
             }
 
             goalProjections.forEach { projection ->
-                SavingsGoalCountdownItem(projection = projection)
+                SavingsGoalCountdownItem(projection = projection, onEdit = { onEditGoal(projection.goal) })
+            }
+
+            OutlinedButton(
+                onClick = onAddGoal,
+                modifier = Modifier.testTag("goal_add"),
+                shape = RoundedCornerShape(12.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldPrimary.copy(alpha = 0.6f))
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, tint = BrightEmerald, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Add a goal", color = BrightEmerald, fontWeight = FontWeight.Bold)
             }
         }
     }
 }
 
 @Composable
-private fun SavingsGoalCountdownItem(projection: GoalProjection) {
+private fun SavingsGoalCountdownItem(projection: GoalProjection, onEdit: () -> Unit) {
     val goal = projection.goal
     val percentInt = (projection.progressPercentage * 100).roundToInt()
 
@@ -550,6 +621,7 @@ private fun SavingsGoalCountdownItem(projection: GoalProjection) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
+                    modifier = Modifier.weight(1f),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
@@ -557,7 +629,7 @@ private fun SavingsGoalCountdownItem(projection: GoalProjection) {
                         text = goal.icon,
                         fontSize = 22.sp
                     )
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = goal.title,
                             style = MaterialTheme.typography.bodyMedium.copy(
@@ -565,14 +637,24 @@ private fun SavingsGoalCountdownItem(projection: GoalProjection) {
                                 color = TextPrimary
                             )
                         )
-                        Text(
-                            text = goal.description,
-                            style = MaterialTheme.typography.bodySmall.copy(
-                                color = TextSecondary,
-                                fontSize = 11.sp
+                        if (goal.description.isNotBlank()) {
+                            Text(
+                                text = goal.description,
+                                style = MaterialTheme.typography.bodySmall.copy(
+                                    color = TextSecondary,
+                                    fontSize = 11.sp
+                                )
                             )
-                        )
+                        }
                     }
+                }
+                IconButton(onClick = onEdit, modifier = Modifier.testTag("goal_edit_${goal.id}")) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = "Edit goal ${goal.title}",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(18.dp)
+                    )
                 }
             }
 

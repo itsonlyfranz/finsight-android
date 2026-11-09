@@ -56,10 +56,12 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 ## 🏗️ Architecture & Features
 
 ### 1. On-Device SQLite Persistence
-- Powered by `FinSightDatabaseHelper` managing `transactions`, `budgets`, and `settings` tables.
+- Powered by `FinSightDatabaseHelper` managing `transactions`, `budgets`, `savings_goals`, and `settings` tables. Database upgrades only ever add (version 2 adds the goals table); no upgrade drops or rewrites existing rows.
 - All changes persist permanently on device across app restarts.
 - A new install starts empty: no demo transactions are added, every screen shows an empty state that says what to do next, and deleting everything never brings sample data back. Existing installs keep their saved data untouched. Amounts are in Philippine pesos (₱). Upgrading from v1.0.0 requires an uninstall, which deletes saved data.
 - Tap a transaction to edit its amount, category, date and note; the trash icon deletes it.
+- **First-launch intro**: a skippable four-step setup (welcome and optional name, how logging turns into insights, optional AI, then your monthly income and an optional first savings goal) is shown once on a fresh install, then lands on the empty dashboard with an "Add your first expense" action. Installs that already have transactions skip it. Skipping keeps the default income of ₱45,000.
+- **Settings** (the gear on the dashboard): change your name (the dashboard greets you with it, or says "Welcome back" without one) and your monthly income at any time.
 
 ### 2. CSV Data Export & Sharing (From Impact-Effort Matrix)
 - Export transactions into RFC 4180-compliant CSV format with a single tap.
@@ -72,7 +74,7 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 ### 4. Goal-Oriented Forward Simulator
 - Interactive cutback sliders (Dining, Tech, Subscriptions).
 - Computes deterministic compound projections for 3, 6, and 12-month horizons.
-- **Financial Goals Countdown**: Dynamic countdowns showing how freed cashflow speeds up savings goals. The app ships no preset goals, so a fresh Simulator shows an empty goals state.
+- **Financial Goals Countdown**: Dynamic countdowns showing how freed cashflow speeds up savings goals. The app ships no preset goals: a fresh Simulator shows an empty goals state with an "Add a goal" button, and goals can be added, edited and deleted there (they are stored in SQLite).
 - **AI Milestone Context**: Natural-language encouragement contextualizing saved pesos into tangible life wins.
 
 ### 5. Multi-Theme Customizer
@@ -96,11 +98,11 @@ All unit tests run via Gradle test runner:
 ```bash
 ./gradlew testDebugUnitTest
 ```
-- **178 JVM unit tests** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original core suites are:
+- **189 JVM unit tests** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original core suites are:
   - `AiInsightsEngineTest`: 7 tests
   - `ForwardSimulatorEngineTest`: 9 tests
-  - `FinSightRepositoryTest`: 12 tests
-  - `FinSightViewModelTest`: 12 tests
+  - `FinSightRepositoryTest`: 15 tests
+  - `FinSightViewModelTest`: 18 tests
   - `CsvExporterTest`: 2 tests
   - `MainScreenViewModelTest`: 2 tests
 

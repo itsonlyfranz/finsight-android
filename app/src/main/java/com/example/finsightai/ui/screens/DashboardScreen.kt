@@ -23,7 +23,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Timeline
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -83,14 +84,22 @@ fun DashboardScreen(
     viewModel: FinSightViewModel,
     onNavigateToInsights: () -> Unit,
     onNavigateToSimulator: () -> Unit,
+    onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val monthlyIncome by viewModel.monthlyIncome.collectAsStateWithLifecycle()
+    val userName by viewModel.userName.collectAsStateWithLifecycle()
+    val transactions by viewModel.transactions.collectAsStateWithLifecycle()
+    var showAddDialog by remember { mutableStateOf(false) }
     val totalSpent by viewModel.totalSpent.collectAsStateWithLifecycle()
     val categoryBreakdown by viewModel.categoryBreakdown.collectAsStateWithLifecycle()
     val insights by viewModel.insights.collectAsStateWithLifecycle()
     val currentTheme by viewModel.appTheme.collectAsStateWithLifecycle()
     val quickCutProjection by viewModel.quickCutProjection12M.collectAsStateWithLifecycle()
+
+    if (showAddDialog) {
+        AddTransactionDialog(viewModel = viewModel, onDismiss = { showAddDialog = false })
+    }
 
     val remainingBuffer = (monthlyIncome - totalSpent).coerceAtLeast(0.0)
     val spendProgress = if (monthlyIncome > 0) (totalSpent / monthlyIncome).toFloat().coerceIn(0f, 1f) else 0f
@@ -106,9 +115,18 @@ fun DashboardScreen(
         // 1. Welcome Header
         item {
             HeaderSection(
+                userName = userName,
                 currentTheme = currentTheme,
-                onThemeSelect = { viewModel.setAppTheme(it) }
+                onThemeSelect = { viewModel.setAppTheme(it) },
+                onOpenSettings = onOpenSettings
             )
+        }
+
+        // 1b. Nothing recorded yet: the one obvious next step.
+        if (transactions.isEmpty()) {
+            item {
+                FirstExpenseCard(onAddExpense = { showAddDialog = true })
+            }
         }
 
         // 2. Spending Summary Card
@@ -149,8 +167,10 @@ fun DashboardScreen(
 
 @Composable
 private fun HeaderSection(
+    userName: String,
     currentTheme: AppTheme,
-    onThemeSelect: (AppTheme) -> Unit
+    onThemeSelect: (AppTheme) -> Unit,
+    onOpenSettings: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -184,7 +204,8 @@ private fun HeaderSection(
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Welcome back",
+                text = if (userName.isBlank()) "Welcome back" else "Hi, $userName",
+                modifier = Modifier.testTag("dashboard_greeting"),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = TextPrimary,
                     fontWeight = FontWeight.SemiBold
@@ -208,21 +229,65 @@ private fun HeaderSection(
                 onThemeSelect = onThemeSelect
             )
 
-            // Profile Avatar Badge
+            // Settings button (name and monthly income live there)
             Box(
                 modifier = Modifier
                     .size(44.dp)
                     .clip(CircleShape)
                     .background(SlateSurfaceVariant)
-                    .border(1.dp, EmeraldPrimary.copy(alpha = 0.5f), CircleShape),
+                    .border(1.dp, EmeraldPrimary.copy(alpha = 0.5f), CircleShape)
+                    .testTag("settings_button")
+                    .clickable { onOpenSettings() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Person,
-                    contentDescription = null,
+                    imageVector = Icons.Filled.Settings,
+                    contentDescription = "Settings",
                     tint = BrightEmerald,
                     modifier = Modifier.size(24.dp)
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FirstExpenseCard(onAddExpense: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("dashboard_first_expense_card")
+            .border(1.dp, EmeraldBorder, RoundedCornerShape(20.dp)),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = SlateSurface)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "Start with your first expense",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+            )
+            Text(
+                text = "Log something you spent on today. Your totals, categories and insights fill in from there.",
+                style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+            )
+            Button(
+                onClick = onAddExpense,
+                modifier = Modifier.testTag("dashboard_add_first_expense"),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = EmeraldPrimary,
+                    contentColor = Color.Black
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Add your first expense", fontWeight = FontWeight.Bold)
             }
         }
     }

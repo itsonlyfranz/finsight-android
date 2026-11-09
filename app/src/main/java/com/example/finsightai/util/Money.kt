@@ -17,6 +17,16 @@ object Money {
     /** `1234.5` -> `₱1,235` (no decimals), for compact projections. */
     fun formatWhole(amount: Double): String = withSymbol(String.format(Locale.US, "%,.0f", amount))
 
+    /**
+     * Reads an amount someone typed: `45000`, `45,000.50`, `₱45,000` or ` 45 000 ` all work. Returns null
+     * for blank or non-numeric text and for values that are not finite (`NaN`, `Infinity`, `1e999`).
+     */
+    fun parseAmount(text: String): Double? {
+        val cleaned = text.trim().removePrefix(SYMBOL).filterNot { it == ',' || it.isWhitespace() }
+        if (cleaned.isEmpty() || cleaned.any { !it.isDigit() && it != '.' }) return null
+        return cleaned.toDoubleOrNull()?.takeIf { it.isFinite() }
+    }
+
     private fun withSymbol(number: String): String =
         if (number.startsWith("-")) "-$SYMBOL${number.substring(1)}" else "$SYMBOL$number"
 }

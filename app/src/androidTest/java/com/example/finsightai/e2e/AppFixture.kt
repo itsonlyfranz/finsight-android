@@ -15,6 +15,7 @@ import com.example.finsightai.llm.SharedPreferencesKeyValueStore
 import com.example.finsightai.llm.hf.HfSearchService
 import com.example.finsightai.llm.hf.HfTokenStore
 import com.example.finsightai.llm.hf.HttpHfApi
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.security.KeystoreSecretStore
@@ -40,6 +41,14 @@ class AppFixture(
      * fresh install. Ignored when [fresh] is false (the earlier process's rows are kept).
      */
     val transactions: List<Transaction> = SampleData.markSantosTransactions(),
+    /**
+     * Marks the first-launch intro as already finished in the brand-new database, which is what every test
+     * that is not about the intro wants (it should not tap through four pages first). Pass false for the
+     * intro tests themselves. Ignored when [fresh] is false.
+     */
+    val onboardingDone: Boolean = true,
+    /** Savings goals written to the brand-new database before the app starts (the app ships none). */
+    val goals: List<SavingsGoal> = emptyList(),
 ) {
     val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
     private val ns = namespace
@@ -61,16 +70,18 @@ class AppFixture(
     init {
         if (fresh) {
             wipeStorage()
-            seedTransactions()
+            seedDatabase()
         }
         services = newServices()
     }
 
-    private fun seedTransactions() {
-        if (transactions.isEmpty()) return
+    private fun seedDatabase() {
+        if (transactions.isEmpty() && goals.isEmpty() && !onboardingDone) return
         val db = database()
         try {
             transactions.forEach(db::insertTransaction)
+            goals.forEach(db::insertGoal)
+            if (onboardingDone) db.setOnboardingCompleted(true)
         } finally {
             db.close()
         }
