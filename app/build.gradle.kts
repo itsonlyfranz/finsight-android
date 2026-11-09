@@ -14,8 +14,8 @@ android {
         applicationId = "com.finsight.ai"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
@@ -53,14 +53,42 @@ android {
         }
     }
 
+    // Release signing: only configured when all four Gradle properties are supplied (e.g. -P flags or
+    // ~/.gradle/gradle.properties). No keystore or password is ever committed; without them the
+    // release APK stays unsigned.
+    val releaseSigningKeys = listOf(
+        "FINSIGHT_RELEASE_STORE_FILE",
+        "FINSIGHT_RELEASE_STORE_PASSWORD",
+        "FINSIGHT_RELEASE_KEY_ALIAS",
+        "FINSIGHT_RELEASE_KEY_PASSWORD",
+    )
+    val releaseSigningProps = releaseSigningKeys.mapNotNull { key ->
+        providers.gradleProperty(key).orNull?.let { key to it }
+    }.toMap()
+    val hasReleaseSigning = releaseSigningProps.size == releaseSigningKeys.size
+    if (hasReleaseSigning) {
+        signingConfigs {
+            create("release") {
+                storeFile = file(releaseSigningProps.getValue("FINSIGHT_RELEASE_STORE_FILE"))
+                storePassword = releaseSigningProps.getValue("FINSIGHT_RELEASE_STORE_PASSWORD")
+                keyAlias = releaseSigningProps.getValue("FINSIGHT_RELEASE_KEY_ALIAS")
+                keyPassword = releaseSigningProps.getValue("FINSIGHT_RELEASE_KEY_PASSWORD")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             testProguardFiles("proguard-test-rules.pro")
             // CI only (-PciDebugSigning): sign the release APK with the auto-generated debug key so
             // it can be installed on the emulator. Never used for publishing; no keystore is committed.
+            // Takes precedence over the release key, so CI behaves exactly as before.
             if (ciDebugSigning) {
                 signingConfig = signingConfigs.getByName("debug")
             }
