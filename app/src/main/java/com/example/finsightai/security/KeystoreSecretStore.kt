@@ -2,11 +2,13 @@ package com.example.finsightai.security
 
 import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
+import android.security.keystore.KeyPermanentlyInvalidatedException
 import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.ProviderException
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -20,7 +22,8 @@ class SecretStoreException(message: String, cause: Throwable? = null) : Exceptio
  * (hardware-backed where available) and keeps only `iv:ciphertext` (base64) in a private
  * SharedPreferences file. The key never leaves the Keystore. If the Keystore is unavailable,
  * [put] throws [SecretStoreException] instead of falling back to plaintext; [get] returns null for
- * entries that can no longer be decrypted (e.g. after a restore onto a new device) and drops them.
+ * entries that can no longer be decrypted (e.g. after a restore onto a new device) and drops them;
+ * other Keystore errors also return null but keep the entry so a later read can succeed.
  */
 class KeystoreSecretStore(
     context: Context,
@@ -33,14 +36,18 @@ class KeystoreSecretStore(
         val stored = prefs.getString(key, null) ?: return null
         return try {
             decrypt(key, stored)
-        } catch (_: GeneralSecurityException) {
+        } catch (_: AEADBadTagException) {
             prefs.edit().remove(key).commit()
             null
-        } catch (_: ProviderException) {
+        } catch (_: KeyPermanentlyInvalidatedException) {
             prefs.edit().remove(key).commit()
             null
         } catch (_: IllegalArgumentException) {
             prefs.edit().remove(key).commit()
+            null
+        } catch (_: GeneralSecurityException) {
+            null
+        } catch (_: ProviderException) {
             null
         }
     }

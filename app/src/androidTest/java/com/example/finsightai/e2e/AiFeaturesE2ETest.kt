@@ -1,9 +1,12 @@
 package com.example.finsightai.e2e
 
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -49,6 +52,11 @@ class AiFeaturesE2ETest {
             (androidx.compose.ui.semantics.SemanticsProperties.TestTag in node.config) && node.config[androidx.compose.ui.semantics.SemanticsProperties.TestTag].startsWith(tagPrefix)
         }).fetchSemanticsNodes().size
 
+    private fun assertInsightTextShown(text: String) {
+        rule.onNodeWithTag("insights_list").performScrollToNode(hasText(text, substring = true))
+        rule.onAllNodesWithText(text, substring = true).onFirst().assertIsDisplayed()
+    }
+
     private fun waitUntilGeneratedBy(text: String) {
         rule.waitUntil(15_000) { rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() }
     }
@@ -65,7 +73,7 @@ class AiFeaturesE2ETest {
     @Test fun withoutAModelInsightsUseTheDeterministicEngine() {
         rule.onNodeWithTag("tab_insights").performClick()
         rule.waitForIdle()
-        rule.onAllNodesWithText("High Cafe & Dining Velocity").fetchSemanticsNodes().let { assert(it.isNotEmpty()) }
+        assertInsightTextShown("High Cafe & Dining Velocity")
         assertEquals(0, count("insight_generated_by_"))
     }
 
@@ -74,8 +82,7 @@ class AiFeaturesE2ETest {
 
         rule.onNodeWithTag("tab_insights").performClick()
         waitUntilGeneratedBy("Written by ${lfm.displayName}")
-        rule.onAllNodesWithText("Rewritten on-device by the fake model.", substring = true).fetchSemanticsNodes()
-            .let { assert(it.isNotEmpty()) }
+        assertInsightTextShown("Rewritten on-device by the fake model.")
 
         rule.onNodeWithTag("tab_simulator").performClick()
         rule.onNodeWithTag("simulator_list").performScrollToNode(hasTestTag("sim_ai_explanation"))
@@ -98,7 +105,7 @@ class AiFeaturesE2ETest {
 
         rule.onNodeWithTag("tab_insights").performClick()
         rule.waitUntil(10_000) { count("insight_generated_by_") == 0 }
-        rule.onAllNodesWithText("High Cafe & Dining Velocity").fetchSemanticsNodes().let { assert(it.isNotEmpty()) }
+        assertInsightTextShown("High Cafe & Dining Velocity")
     }
 
     private fun useSignedInCodex() {
@@ -153,7 +160,7 @@ class AiFeaturesE2ETest {
         h.codexAuth.startSignIn()
         rule.waitUntil(10_000) { h.codexAuth.isSignedIn }
         waitUntilGeneratedBy("Written by Codex (codex-auto-review)")
-        rule.onAllNodesWithText("Rewritten by Codex.", substring = true).fetchSemanticsNodes().let { assert(it.isNotEmpty()) }
+        assertInsightTextShown("Rewritten by Codex.")
 
         // Back to on-device.
         rule.onNodeWithTag("tab_ai_setup").performClick()
