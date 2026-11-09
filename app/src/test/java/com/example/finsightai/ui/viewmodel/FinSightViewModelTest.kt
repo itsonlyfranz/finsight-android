@@ -1,6 +1,7 @@
 package com.example.finsightai.ui.viewmodel
 
 import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
@@ -247,5 +248,110 @@ class FinSightViewModelTest {
         viewModel.setAppTheme(com.example.finsightai.theme.AppTheme.MIDNIGHT_BLUE)
         advanceUntilIdle()
         assertEquals(com.example.finsightai.theme.AppTheme.MIDNIGHT_BLUE, viewModel.appTheme.value)
+    }
+
+    @Test
+    fun setMonthlyIncome_acceptsPositiveFiniteAmountsOnly() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        assertTrue(viewModel.setMonthlyIncome(52_000.5))
+        assertEquals(52_000.5, viewModel.monthlyIncome.value, 0.001)
+
+        listOf(0.0, -1.0, Double.NaN, Double.POSITIVE_INFINITY).forEach {
+            assertFalse("$it must be refused", viewModel.setMonthlyIncome(it))
+        }
+        assertEquals("a refused income changes nothing", 52_000.5, viewModel.monthlyIncome.value, 0.001)
+    }
+
+    @Test
+    fun goals_areValidatedAddedEditedAndDeleted() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        assertTrue(viewModel.goals.value.isEmpty())
+
+        assertFalse("blank name", viewModel.addGoal("  ", 1000.0, 0.0))
+        assertFalse("zero target", viewModel.addGoal("Trip", 0.0, 0.0))
+        assertFalse("NaN target", viewModel.addGoal("Trip", Double.NaN, 0.0))
+        assertFalse("negative saved", viewModel.addGoal("Trip", 1000.0, -1.0))
+        assertTrue(viewModel.goals.value.isEmpty())
+
+        assertTrue(viewModel.addGoal("  Trip  ", 20_000.0, 5_000.0))
+        val trip = viewModel.goals.value.single()
+        assertEquals("Trip", trip.title)
+        assertEquals(FinSightViewModel.DEFAULT_GOAL_ICON, trip.icon)
+        assertEquals("", trip.description)
+
+        assertFalse(viewModel.updateGoal(trip, "", 1.0, 0.0))
+        assertTrue(viewModel.updateGoal(trip, "Big trip", 30_000.0, 6_000.0))
+        advanceUntilIdle()
+        assertEquals(trip.id, viewModel.goals.value.single().id)
+        assertEquals("Big trip", viewModel.goals.value.single().title)
+        assertEquals(trip.id, viewModel.simulationResult.value.goalProjections.single().goal.id)
+        assertEquals("Big trip", viewModel.simulationResult.value.goalProjections.single().goal.title)
+
+        viewModel.deleteGoal(trip.id)
+        advanceUntilIdle()
+        assertTrue(viewModel.goals.value.isEmpty())
+        assertTrue(viewModel.simulationResult.value.goalProjections.isEmpty())
+    }
+
+    @Test
+    fun updateGoal_keepsTheStoredIconAndDescription() = runTest(testDispatcher) {
+        repository.addGoal(SavingsGoal("g1", "Laptop", 50_000.0, 1_000.0, "💻", "for school"))
+        advanceUntilIdle()
+        val laptop = viewModel.goals.value.single()
+
+        assertTrue(viewModel.updateGoal(laptop, "New laptop", 60_000.0, 2_000.0))
+        advanceUntilIdle()
+        val edited = viewModel.goals.value.single()
+        assertEquals("New laptop", edited.title)
+        assertEquals("💻", edited.icon)
+        assertEquals("for school", edited.description)
+    }
+
+    @Test
+    fun finishOnboarding_savesIncomeNameAndGoalThenNeverComesBack() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        assertFalse(viewModel.onboardingCompleted.value)
+
+        assertTrue(viewModel.finishOnboarding(monthlyIncome = 60_000.0, name = " Maria ", goalTitle = "Fund", goalTarget = 90_000.0))
+        assertTrue(viewModel.onboardingCompleted.value)
+        assertEquals(60_000.0, viewModel.monthlyIncome.value, 0.001)
+        assertEquals("Maria", viewModel.userName.value)
+        assertEquals("Fund", viewModel.goals.value.single().title)
+        assertEquals(90_000.0, viewModel.goals.value.single().targetAmount, 0.001)
+        assertEquals(0.0, viewModel.goals.value.single().currentSaved, 0.001)
+    }
+
+    @Test
+    fun finishOnboarding_withoutAGoalOrNameSavesOnlyTheIncome() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        assertTrue(viewModel.finishOnboarding(monthlyIncome = 30_000.0))
+        assertTrue(viewModel.onboardingCompleted.value)
+        assertEquals(30_000.0, viewModel.monthlyIncome.value, 0.001)
+        assertEquals("", viewModel.userName.value)
+        assertTrue(viewModel.goals.value.isEmpty())
+    }
+
+    @Test
+    fun finishOnboarding_refusesBadInputAndWritesNothing() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        assertFalse(viewModel.finishOnboarding(monthlyIncome = 0.0, name = "Maria"))
+        assertFalse("half a goal", viewModel.finishOnboarding(monthlyIncome = 10_000.0, name = "Maria", goalTitle = "Fund", goalTarget = null))
+        assertFalse("half a goal", viewModel.finishOnboarding(monthlyIncome = 10_000.0, name = "Maria", goalTitle = "", goalTarget = 500.0))
+        assertFalse("bad goal target", viewModel.finishOnboarding(monthlyIncome = 10_000.0, goalTitle = "Fund", goalTarget = 0.0))
+
+        assertFalse(viewModel.onboardingCompleted.value)
+        assertEquals(45_000.0, viewModel.monthlyIncome.value, 0.001)
+        assertEquals("", viewModel.userName.value)
+        assertTrue(viewModel.goals.value.isEmpty())
+    }
+
+    @Test
+    fun skipOnboarding_keepsTheDefaultsAndSavesNothing() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        viewModel.skipOnboarding()
+        assertTrue(viewModel.onboardingCompleted.value)
+        assertEquals(45_000.0, viewModel.monthlyIncome.value, 0.001)
+        assertEquals("", viewModel.userName.value)
+        assertTrue(viewModel.goals.value.isEmpty())
     }
 }

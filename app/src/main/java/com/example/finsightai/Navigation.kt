@@ -41,6 +41,9 @@ import com.example.finsightai.theme.TextMuted
 import com.example.finsightai.theme.TextSecondary
 import com.example.finsightai.ui.aisetup.AiSetupScreen
 import com.example.finsightai.ui.aisetup.AiSetupViewModel
+import com.example.finsightai.ui.onboarding.OnboardingScreen
+import com.example.finsightai.ui.screens.SettingsScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.finsightai.ui.screens.AiInsightsScreen
 import com.example.finsightai.ui.screens.DashboardScreen
 import com.example.finsightai.ui.screens.ForwardSimulatorScreen
@@ -67,6 +70,15 @@ fun MainNavigation(
     aiSetupViewModel: AiSetupViewModel? = null
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(FinSightTab.DASHBOARD) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    val onboardingCompleted by viewModel.onboardingCompleted.collectAsStateWithLifecycle()
+
+    // First launch only: the intro replaces the whole app until it is finished or skipped, then the
+    // user lands on the (empty) dashboard.
+    if (!onboardingCompleted) {
+        OnboardingScreen(viewModel = viewModel)
+        return
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -86,7 +98,10 @@ fun MainNavigation(
                     NavigationBarItem(
                         selected = isSelected,
                         modifier = Modifier.testTag("tab_${tab.name.lowercase()}"),
-                        onClick = { selectedTab = tab },
+                        onClick = {
+                            showSettings = false
+                            selectedTab = tab
+                        },
                         icon = {
                             Icon(
                                 imageVector = tab.icon,
@@ -119,11 +134,16 @@ fun MainNavigation(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
+            if (showSettings) {
+                SettingsScreen(viewModel = viewModel, onClose = { showSettings = false })
+                return@Box
+            }
             when (selectedTab) {
                 FinSightTab.DASHBOARD -> DashboardScreen(
                     viewModel = viewModel,
                     onNavigateToInsights = { selectedTab = FinSightTab.INSIGHTS },
-                    onNavigateToSimulator = { selectedTab = FinSightTab.SIMULATOR }
+                    onNavigateToSimulator = { selectedTab = FinSightTab.SIMULATOR },
+                    onOpenSettings = { showSettings = true }
                 )
                 FinSightTab.TRANSACTIONS -> TransactionHistoryScreen(
                     viewModel = viewModel

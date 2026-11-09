@@ -1,5 +1,6 @@
 package com.example.finsightai.data
 
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.TransactionCategory
@@ -153,5 +154,47 @@ class FinSightRepositoryTest {
     fun `updateBudget updates category budget`() {
         repository.updateBudget(TransactionCategory.CAFES_DINING, 3000.0)
         assertEquals(3000.0, repository.currentBudget.value[TransactionCategory.CAFES_DINING] ?: 0.0, 0.01)
+    }
+
+    private fun goal(id: String, title: String = "Laptop", target: Double = 50_000.0, saved: Double = 10_000.0) =
+        SavingsGoal(id = id, title = title, targetAmount = target, currentSaved = saved, icon = "💻", description = "")
+
+    @Test
+    fun `a new repository has no goals, no name and has not finished the intro`() {
+        val fresh = DefaultFinSightRepository()
+        assertTrue(fresh.goals.value.isEmpty())
+        assertEquals("", fresh.userName.value)
+        assertFalse(fresh.onboardingCompleted.value)
+        assertTrue(fresh.simulateSavings(emptyMap()).goalProjections.isEmpty())
+    }
+
+    @Test
+    fun `goals can be added, edited and deleted, and the simulator projects them`() {
+        repository.addGoal(goal("g1"))
+        repository.addGoal(goal("g2", title = "Trip", target = 20_000.0, saved = 0.0))
+        assertEquals(listOf("g1", "g2"), repository.goals.value.map { it.id })
+
+        repository.updateGoal(goal("g1", title = "Better laptop", target = 80_000.0, saved = 20_000.0))
+        assertEquals("Better laptop", repository.goals.value.first { it.id == "g1" }.title)
+        assertEquals(2, repository.goals.value.size)
+
+        val projections = repository.simulateSavings(mapOf(TransactionCategory.CAFES_DINING to 0.20f)).goalProjections
+        assertEquals(listOf("g1", "g2"), projections.map { it.goal.id })
+
+        repository.deleteGoal("g1")
+        assertEquals(listOf("g2"), repository.goals.value.map { it.id })
+        assertEquals(listOf("g2"), repository.simulateSavings(emptyMap()).goalProjections.map { it.goal.id })
+    }
+
+    @Test
+    fun `updateUserName trims and completeOnboarding is remembered`() {
+        repository.updateUserName("  Maria  ")
+        assertEquals("Maria", repository.userName.value)
+        repository.updateUserName("   ")
+        assertEquals("", repository.userName.value)
+
+        assertFalse(repository.onboardingCompleted.value)
+        repository.completeOnboarding()
+        assertTrue(repository.onboardingCompleted.value)
     }
 }

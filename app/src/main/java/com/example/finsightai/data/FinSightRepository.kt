@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.finsightai.ai.AiInsightsEngine
 import com.example.finsightai.ai.ForwardSimulatorEngine
 import com.example.finsightai.model.AiInsight
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
@@ -19,6 +20,13 @@ interface FinSightRepository {
     val monthlyIncome: StateFlow<Double>
     val insights: StateFlow<List<AiInsight>>
     val currentTheme: StateFlow<AppTheme>
+    val goals: StateFlow<List<SavingsGoal>>
+
+    /** The name to greet the user by; blank when they never gave one. */
+    val userName: StateFlow<String>
+
+    /** False until the first-launch intro has been finished or skipped (or the install already has data). */
+    val onboardingCompleted: StateFlow<Boolean>
 
     fun addTransaction(transaction: Transaction)
     fun deleteTransaction(transactionId: String)
@@ -28,6 +36,11 @@ interface FinSightRepository {
     fun updateBudget(category: TransactionCategory, newBudget: Double)
     fun updateMonthlyIncome(newIncome: Double)
     fun updateTheme(theme: AppTheme)
+    fun addGoal(goal: SavingsGoal)
+    fun updateGoal(goal: SavingsGoal)
+    fun deleteGoal(goalId: String)
+    fun updateUserName(name: String)
+    fun completeOnboarding()
     fun refreshInsights(): List<AiInsight>
     fun simulateSavings(targetReductions: Map<TransactionCategory, Float>): SimulationResult
 }
@@ -59,6 +72,15 @@ class DefaultFinSightRepository(
     private val _currentTheme: MutableStateFlow<AppTheme>
     override val currentTheme: StateFlow<AppTheme>
 
+    private val _goals: MutableStateFlow<List<SavingsGoal>>
+    override val goals: StateFlow<List<SavingsGoal>>
+
+    private val _userName: MutableStateFlow<String>
+    override val userName: StateFlow<String>
+
+    private val _onboardingCompleted: MutableStateFlow<Boolean>
+    override val onboardingCompleted: StateFlow<Boolean>
+
     private val _insights = MutableStateFlow<List<AiInsight>>(emptyList())
     override val insights: StateFlow<List<AiInsight>> = _insights.asStateFlow()
 
@@ -79,17 +101,34 @@ class DefaultFinSightRepository(
                 AppTheme.DECK_EMERALD
             }
             _currentTheme = MutableStateFlow(theme)
+
+            _goals = MutableStateFlow(dbHelper.getAllGoals())
+            _userName = MutableStateFlow(dbHelper.getUserName())
+
+            // The intro is for brand-new installs only. A database that already holds transactions
+            // belongs to someone who has been using the app, so it is marked done instead of showing it.
+            val storedOnboarding = dbHelper.getOnboardingCompleted()
+            val completed = storedOnboarding ?: _transactions.value.isNotEmpty().also { hasData ->
+                if (hasData) dbHelper.setOnboardingCompleted(true)
+            }
+            _onboardingCompleted = MutableStateFlow(completed)
         } else {
             _transactions = MutableStateFlow(emptyList())
             _currentBudget = MutableStateFlow(defaultBudgets)
             _monthlyIncome = MutableStateFlow(45000.0)
             _currentTheme = MutableStateFlow(AppTheme.DECK_EMERALD)
+            _goals = MutableStateFlow(emptyList())
+            _userName = MutableStateFlow("")
+            _onboardingCompleted = MutableStateFlow(false)
         }
 
         monthlyIncome = _monthlyIncome.asStateFlow()
         currentBudget = _currentBudget.asStateFlow()
         transactions = _transactions.asStateFlow()
         currentTheme = _currentTheme.asStateFlow()
+        goals = _goals.asStateFlow()
+        userName = _userName.asStateFlow()
+        onboardingCompleted = _onboardingCompleted.asStateFlow()
 
         refreshInsights()
     }
@@ -162,6 +201,44 @@ class DefaultFinSightRepository(
         _currentTheme.value = theme
     }
 
+    override fun addGoal(goal: SavingsGoal) {
+        if (dbHelper != null) {
+            dbHelper.insertGoal(goal)
+            _goals.value = dbHelper.getAllGoals()
+        } else {
+            _goals.value = _goals.value.filterNot { it.id == goal.id } + goal
+        }
+    }
+
+    override fun updateGoal(goal: SavingsGoal) {
+        if (dbHelper != null) {
+            dbHelper.updateGoal(goal)
+            _goals.value = dbHelper.getAllGoals()
+        } else {
+            _goals.value = _goals.value.map { if (it.id == goal.id) goal else it }
+        }
+    }
+
+    override fun deleteGoal(goalId: String) {
+        if (dbHelper != null) {
+            dbHelper.deleteGoal(goalId)
+            _goals.value = dbHelper.getAllGoals()
+        } else {
+            _goals.value = _goals.value.filterNot { it.id == goalId }
+        }
+    }
+
+    override fun updateUserName(name: String) {
+        val trimmed = name.trim()
+        dbHelper?.setUserName(trimmed)
+        _userName.value = trimmed
+    }
+
+    override fun completeOnboarding() {
+        dbHelper?.setOnboardingCompleted(true)
+        _onboardingCompleted.value = true
+    }
+
     override fun refreshInsights(): List<AiInsight> {
         val newInsights = aiInsightsEngine.generateInsights(
             transactions = _transactions.value,
@@ -176,7 +253,8 @@ class DefaultFinSightRepository(
         val baselineSpending = getCategoryBreakdown()
         return forwardSimulatorEngine.simulate(
             baselineSpending = baselineSpending,
-            targetReductions = targetReductions
+            targetReductions = targetReductions,
+            goals = _goals.value
         )
     }
 }

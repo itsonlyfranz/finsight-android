@@ -41,7 +41,7 @@ class AiFeaturesE2ETest {
         lateinit var finsight: FinSightViewModel
         lateinit var setup: AiSetupViewModel
         rule.runOnUiThread {
-            finsight = FinSightViewModel(SampleData.repository(), h.services.router, h.services.signal)
+            finsight = FinSightViewModel(SampleData.repository().also { it.completeOnboarding() }, h.services.router, h.services.signal)
             setup = AiSetupViewModel(h.services)
         }
         rule.setContent { FinSightAITheme { MainNavigation(viewModel = finsight, aiSetupViewModel = setup) } }
