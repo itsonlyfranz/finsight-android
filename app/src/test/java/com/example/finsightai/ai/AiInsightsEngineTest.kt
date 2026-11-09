@@ -1,6 +1,6 @@
 package com.example.finsightai.ai
 
-import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.InsightType
 import com.example.finsightai.model.Severity
 import com.example.finsightai.model.Transaction
@@ -153,21 +153,29 @@ class AiInsightsEngineTest {
     }
 
     @Test
-    fun `emits contextual tips for junior software engineers`() {
+    fun `says nothing until something is recorded`() {
+        assertTrue(engine.generateInsights(transactions = emptyList(), monthlyIncome = 45000.0).isEmpty())
+    }
+
+    @Test
+    fun `emits contextual tips for early-career earners in the Philippines`() {
         val insights = engine.generateInsights(
-            transactions = emptyList(),
+            transactions = listOf(
+                Transaction(title = "Jeepney", amount = 20.0, category = TransactionCategory.TRANSPORT)
+            ),
             monthlyIncome = 3200.0
         )
 
         val tips = insights.filter { it.type == InsightType.TIP }
         assertTrue("Should emit at least 2 tips", tips.size >= 2)
-        assertTrue(tips.any { it.title.contains("401(k)") })
+        assertTrue(tips.any { it.title.contains("13th-Month") })
+        assertTrue("no US-only retirement-plan wording", insights.none { (it.title + it.description + it.actionSuggestion).contains("401") })
         assertTrue(tips.any { it.title.contains("Stipend") })
     }
 
     @Test
     fun `analyzes Mark Santos seed data comprehensively`() {
-        val seed = DefaultFinSightRepository.seedMarkSantosData()
+        val seed = SampleData.markSantosTransactions()
         val insights = engine.generateInsights(
             transactions = seed,
             monthlyIncome = 45000.0

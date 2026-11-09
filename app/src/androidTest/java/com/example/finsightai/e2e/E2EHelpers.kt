@@ -69,6 +69,10 @@ fun ComposeTestRule.scrollToText(list: String, text: String, substring: Boolean 
 fun ComposeTestRule.textOf(tag: String): String =
     onNodeWithTag(tag).fetchSemanticsNode().config[SemanticsProperties.Text].joinToString("") { it.text }
 
+/** Every text run on the (merged) node tagged [tag], e.g. a clickable card's title and subtitle. */
+fun ComposeTestRule.textsOf(tag: String): List<String> =
+    onNodeWithTag(tag).fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text }
+
 /** Matches a card tagged [tag] that has a descendant showing [text]. */
 fun cardWithText(tag: String, text: String, substring: Boolean = false) =
     hasTestTag(tag) and hasAnyDescendant(hasText(text, substring = substring))

@@ -1,6 +1,7 @@
 package com.example.finsightai.ai
 
 import com.example.finsightai.model.TransactionCategory
+import com.example.finsightai.testdata.SampleData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -131,6 +132,7 @@ class ForwardSimulatorEngineTest {
     @Test
     fun `projectGoals produces dynamic badges and timeline projections`() {
         val projections = simulator.projectGoals(
+            goals = SampleData.goals(),
             freedMonthlyCashflow = 2492.0
         )
 
@@ -146,5 +148,23 @@ class ForwardSimulatorEngineTest {
         assertNotNull(devRigGoal)
         // Target ₱44,800, saved ₱11,200 -> remaining ₱33,600 / 6,692 = ceil(5.02) = 6 months
         assertEquals(6, devRigGoal!!.monthsToReach)
+    }
+
+    @Test
+    fun `quick cut projection compounds 20 percent of cafe and tech spending over 12 months`() {
+        val baseline = mapOf(
+            TransactionCategory.CAFES_DINING to 8800.0,
+            TransactionCategory.TECH_GADGETS to 5900.0,
+            TransactionCategory.SUBSCRIPTIONS to 3496.0 // not part of the quick cut
+        )
+        // 20% of 14,700 = 2,940/month; annuity-due future value at 4.5%/12 over 12 months:
+        // 2,940 * ((1.00375^12 - 1) / 0.00375) * 1.00375 = 36,151.89
+        assertEquals(36151.89, simulator.quickCutProjection(baseline), 0.01)
+    }
+
+    @Test
+    fun `quick cut projection is zero when there is nothing to cut`() {
+        assertEquals(0.0, simulator.quickCutProjection(emptyMap()), 0.0)
+        assertEquals(0.0, simulator.quickCutProjection(mapOf(TransactionCategory.GROCERIES to 4200.0)), 0.0)
     }
 }

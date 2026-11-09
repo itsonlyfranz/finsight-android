@@ -15,6 +15,8 @@ import com.example.finsightai.llm.SharedPreferencesKeyValueStore
 import com.example.finsightai.llm.hf.HfSearchService
 import com.example.finsightai.llm.hf.HfTokenStore
 import com.example.finsightai.llm.hf.HttpHfApi
+import com.example.finsightai.model.Transaction
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.security.KeystoreSecretStore
 import kotlinx.coroutines.delay
 import java.io.File
@@ -32,6 +34,12 @@ class AppFixture(
     namespace: String = "e2e${System.nanoTime()}",
     /** False keeps whatever an earlier process left on disk under [namespace]. */
     fresh: Boolean = true,
+    /**
+     * The rows written to the (otherwise brand-new) database before the app starts. The app seeds no demo
+     * data of its own, so tests that need a month of spending bring it; pass `emptyList()` for a true
+     * fresh install. Ignored when [fresh] is false (the earlier process's rows are kept).
+     */
+    val transactions: List<Transaction> = SampleData.markSantosTransactions(),
 ) {
     val context: Context = InstrumentationRegistry.getInstrumentation().targetContext
     private val ns = namespace
@@ -51,8 +59,21 @@ class AppFixture(
     lateinit var prefs: BackendPreferences
 
     init {
-        if (fresh) wipeStorage()
+        if (fresh) {
+            wipeStorage()
+            seedTransactions()
+        }
         services = newServices()
+    }
+
+    private fun seedTransactions() {
+        if (transactions.isEmpty()) return
+        val db = database()
+        try {
+            transactions.forEach(db::insertTransaction)
+        } finally {
+            db.close()
+        }
     }
 
     fun deleteDatabase() { context.deleteDatabase(FinSightDatabaseHelper.DATABASE_NAME) }

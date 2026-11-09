@@ -128,6 +128,13 @@ android {
     testOptions {
       unitTests.isReturnDefaultValues = true
     }
+
+    // Test-only sample data (src/sharedTest) is compiled into both the unit and the instrumented tests,
+    // so neither needs the app to ship demo data.
+    sourceSets {
+        getByName("test").kotlin.directories.add("src/sharedTest/java")
+        getByName("androidTest").kotlin.directories.add("src/sharedTest/java")
+    }
 }
 
 kotlin {

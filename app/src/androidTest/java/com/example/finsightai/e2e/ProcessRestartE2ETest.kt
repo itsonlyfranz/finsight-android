@@ -9,7 +9,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.finsightai.ai.backend.BackendChoice
-import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.TransactionCategory
 import com.example.finsightai.theme.AppTheme
 import com.example.finsightai.util.Money
@@ -29,7 +29,7 @@ class ProcessRestartE2ETest {
     @get:Rule val rule = createEmptyComposeRule()
     private val phase: String? = InstrumentationRegistry.getArguments().getString("restartPhase")
     private val namespace = "process-restart"
-    private val seed = DefaultFinSightRepository.seedMarkSantosData()
+    private val seed = SampleData.markSantosTransactions()
 
     private fun write(app: AppFixture) = app.launch().let { scenario ->
         rule.openTab("transactions")

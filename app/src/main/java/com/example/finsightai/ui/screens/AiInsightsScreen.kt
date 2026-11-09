@@ -42,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -194,6 +195,41 @@ fun AiInsightsScreen(
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
+            if (filteredInsights.isEmpty()) {
+                item(key = "insights_empty") {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp)
+                            .testTag("insights_empty"),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.AutoAwesome,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Text(
+                            text = if (insights.isEmpty()) "No insights yet" else "Nothing under this filter",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        )
+                        Text(
+                            text = if (insights.isEmpty()) {
+                                "Record a few transactions in the Transactions tab and spending nudges and savings tips will show up here."
+                            } else {
+                                "Pick another tab to see the rest of your insights."
+                            },
+                            style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
             items(filteredInsights, key = { it.id }) { insight ->
                 InsightCard(insight = insight)
             }

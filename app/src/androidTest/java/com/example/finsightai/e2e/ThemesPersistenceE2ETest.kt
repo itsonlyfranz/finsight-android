@@ -13,7 +13,7 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.finsightai.MainActivity
-import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.theme.AppTheme
 import com.example.finsightai.theme.getFinSightColorScheme
 import org.junit.After
@@ -34,7 +34,7 @@ class ThemesPersistenceE2ETest {
     @get:Rule val rule = createEmptyComposeRule()
     private val app = AppFixture()
     private lateinit var scenario: ActivityScenario<MainActivity>
-    private val seedSize = DefaultFinSightRepository.seedMarkSantosData().size
+    private val seedSize = SampleData.markSantosTransactions().size
 
     @Before fun setUp() {
         scenario = app.launch()
@@ -158,7 +158,7 @@ class ThemesPersistenceE2ETest {
         assertFalse("the deleted demo row stays deleted", rule.hasTag("tx_tx_dining_6"))
         rule.openTab("dashboard")
         // Spending recomputed from the stored rows after the restart.
-        val seed = DefaultFinSightRepository.seedMarkSantosData()
+        val seed = SampleData.markSantosTransactions()
         val spent = seed.filter { it.isExpense && it.category != com.example.finsightai.model.TransactionCategory.SALARY }.sumOf { it.amount } -
             1000.0 + 123.45
         assertEquals(com.example.finsightai.util.Money.format(spent), rule.textOf("dashboard_outflow"))
@@ -173,11 +173,11 @@ class ThemesPersistenceE2ETest {
         rule.waitForTag("dashboard_outflow")
     }
 
-    @Test fun demoDataAndIncomeAreSeededOnceAndNotAgainAfterARestart() {
+    @Test fun aRestartNeitherAddsNorRestoresAnyRows() {
         val db = app.database()
         assertEquals(45000.0, db.getMonthlyIncome(), 0.0)
         assertEquals(seedSize, db.getAllTransactions().size)
         restart()
-        assertEquals("a restart must not seed the demo data a second time", seedSize, app.database().getAllTransactions().size)
+        assertEquals("a restart must not add rows", seedSize, app.database().getAllTransactions().size)
     }
 }

@@ -1,8 +1,10 @@
 package com.example.finsightai.data
 
 import com.example.finsightai.model.Transaction
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.TransactionCategory
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -15,11 +17,27 @@ class FinSightRepositoryTest {
 
     @Before
     fun setUp() {
-        repository = DefaultFinSightRepository()
+        repository = SampleData.repository()
     }
 
     @Test
-    fun `preseeded Mark Santos data has expected income and expenses`() {
+    fun `a new repository starts empty with no insights`() {
+        val fresh = DefaultFinSightRepository()
+        assertTrue(fresh.transactions.value.isEmpty())
+        assertTrue(fresh.getCategoryBreakdown().isEmpty())
+        assertTrue(fresh.insights.value.isEmpty())
+    }
+
+    @Test
+    fun `deleting every transaction leaves the list empty and never brings sample data back`() {
+        repository.transactions.value.map { it.id }.forEach(repository::deleteTransaction)
+        assertTrue(repository.transactions.value.isEmpty())
+        assertTrue(repository.insights.value.isEmpty())
+        assertTrue(repository.getCategoryBreakdown().isEmpty())
+    }
+
+    @Test
+    fun `sample Mark Santos data has expected income and expenses`() {
         val transactions = repository.transactions.value
         val salaryTx = transactions.find { it.category == TransactionCategory.SALARY }
         assertNotNull("Salary transaction must exist", salaryTx)
@@ -76,6 +94,26 @@ class FinSightRepositoryTest {
         val found = repository.transactions.value.find { it.id == "tx_cafe_2" }
         assertEquals("Philz Mint Mojito Large", found?.title)
         assertEquals(220.0, found?.amount ?: 0.0, 0.01)
+    }
+
+    @Test
+    fun `updateTransaction can change amount category date and note and moves the spending with it`() {
+        val before = repository.getCategoryBreakdown()
+        val original = repository.transactions.value.single { it.id == "tx_cafe_2" }
+        val edited = original.copy(
+            amount = 500.0,
+            category = TransactionCategory.TRANSPORT,
+            date = LocalDate.of(2026, 1, 9),
+            notes = "taxi instead"
+        )
+        repository.updateTransaction(edited)
+
+        assertEquals(edited, repository.transactions.value.single { it.id == "tx_cafe_2" })
+        val after = repository.getCategoryBreakdown()
+        assertEquals(before.getValue(TransactionCategory.CAFES_DINING) - original.amount, after.getValue(TransactionCategory.CAFES_DINING), 0.01)
+        assertEquals(before.getValue(TransactionCategory.TRANSPORT) + 500.0, after.getValue(TransactionCategory.TRANSPORT), 0.01)
+        assertEquals("the other rows are untouched", SampleData.markSantosTransactions().size, repository.transactions.value.size)
+        assertFalse(repository.transactions.value.any { it.id != "tx_cafe_2" && it.notes == "taxi instead" })
     }
 
     @Test

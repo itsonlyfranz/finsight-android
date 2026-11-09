@@ -81,6 +81,17 @@ fun ForwardSimulatorScreen(
             HeaderSection()
         }
 
+        // Nothing recorded yet: say why the numbers below are zero instead of leaving them unexplained.
+        if (categoryBreakdown.isEmpty()) {
+            item {
+                Text(
+                    text = "No spending recorded yet. Add expenses in the Transactions tab and these levers will show what small cutbacks could free up.",
+                    modifier = Modifier.testTag("sim_empty_hint"),
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
+            }
+        }
+
         // Real-Time Projection Output Card
         item {
             ProjectionsSummaryCard(simulationResult = simulationResult)
@@ -92,6 +103,14 @@ fun ForwardSimulatorScreen(
                 Box(modifier = Modifier.testTag("goals_section")) {
                     FinancialGoalsCountdownSection(goalProjections = simulationResult.goalProjections)
                 }
+            }
+        } else {
+            item {
+                Text(
+                    text = "No savings goals yet. Once you have goals, this section will show how your cutbacks speed them up.",
+                    modifier = Modifier.testTag("goals_empty"),
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
             }
         }
 

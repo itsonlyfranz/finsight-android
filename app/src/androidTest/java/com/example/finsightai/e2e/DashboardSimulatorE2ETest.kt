@@ -3,6 +3,7 @@ package com.example.finsightai.e2e
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithTag
@@ -13,8 +14,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.finsightai.MainActivity
-import com.example.finsightai.data.DefaultFinSightRepository
-import com.example.finsightai.model.SavingsGoal
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.TransactionCategory
 import com.example.finsightai.util.Money
 import org.junit.After
@@ -25,7 +25,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
- * Dashboard, Forward Simulator (sliders + savings goals) and the peso display in the real activity.
+ * Dashboard, Forward Simulator (sliders + empty savings goals) and the peso display in the real activity.
  * Expected numbers are worked out here from the demo transactions, not read back from the engines.
  */
 @RunWith(AndroidJUnit4::class)
@@ -33,7 +33,7 @@ class DashboardSimulatorE2ETest {
     @get:Rule val rule = createEmptyComposeRule()
     private val app = AppFixture()
     private lateinit var scenario: ActivityScenario<MainActivity>
-    private val seed = DefaultFinSightRepository.seedMarkSantosData()
+    private val seed = SampleData.markSantosTransactions()
 
     private fun spent(category: TransactionCategory) = seed.filter { it.category == category && it.isExpense }.sumOf { it.amount }
     private val outflow = seed.filter { it.isExpense && it.category != TransactionCategory.SALARY }.sumOf { it.amount }
@@ -50,13 +50,49 @@ class DashboardSimulatorE2ETest {
 
     // ---- dashboard ----
 
-    @Test fun dashboardShowsTheDemoProfileOutflowTargetAndBuffer() {
-        rule.onNodeWithText("Welcome back, Mark Santos").assertIsDisplayed()
+    @Test fun dashboardShowsTheOutflowTargetAndBufferAndNoDemoPersona() {
+        rule.onNodeWithText("Welcome back").assertIsDisplayed()
+        assertEquals("the dashboard greets nobody by a demo name", 0, rule.onAllNodesWithText("Mark Santos", substring = true).fetchSemanticsNodes().size)
         assertEquals(Money.format(outflow), rule.textOf("dashboard_outflow"))
         assertEquals("Target: ${Money.format(45000.0)}", rule.textOf("dashboard_target"))
         val percent = (outflow / 45000.0 * 100).toInt()
         rule.onNodeWithText("$percent% of income spent").assertIsDisplayed()
         rule.onNodeWithText("${Money.format(45000.0 - outflow)} buffer remaining").assertIsDisplayed()
+    }
+
+    @Test fun simulatorCardProjectsTwelveMonthsFromTheUsersOwnCafeAndTechSpending() {
+        // 20% of this month's cafe/dining + tech spend, deposited every month for 12 months at 4.5% APY
+        // (each deposit earns that month's interest), worked out here independently of the engine.
+        val monthly = (spent(TransactionCategory.CAFES_DINING) + spent(TransactionCategory.TECH_GADGETS)) * 0.20
+        var balance = 0.0
+        repeat(12) { balance = (balance + monthly) * (1 + 0.045 / 12) }
+        rule.scrollToText("dashboard_list", "Forward Simulator")
+        assertEquals(
+            "Simulate 20% cafe & tech cuts compounding to ${Money.formatWhole(balance)} in 12M",
+            rule.textsOf("simulator_card").last()
+        )
+        assertEquals("no hard-coded figure", 0, rule.onAllNodesWithText("35,000", substring = true).fetchSemanticsNodes().size)
+    }
+
+    @Test fun simulatorCardFollowsNewSpending() {
+        rule.openTab("transactions")
+        rule.onNodeWithTag("fab_add").performClick()
+        rule.waitForTag("tx_title")
+        rule.onNodeWithTag("tx_title").performTextInput("E2E Gadget")
+        rule.onNodeWithTag("tx_amount").performTextInput("10000")
+        rule.onNodeWithTag("tx_category_TECH_GADGETS").performClick()
+        rule.onNodeWithTag("tx_save").performClick()
+        rule.waitGone("tx_title")
+
+        rule.openTab("dashboard")
+        val monthly = (spent(TransactionCategory.CAFES_DINING) + spent(TransactionCategory.TECH_GADGETS) + 10_000.0) * 0.20
+        var balance = 0.0
+        repeat(12) { balance = (balance + monthly) * (1 + 0.045 / 12) }
+        rule.scrollToText("dashboard_list", "Forward Simulator")
+        assertEquals(
+            "Simulate 20% cafe & tech cuts compounding to ${Money.formatWhole(balance)} in 12M",
+            rule.textsOf("simulator_card").last()
+        )
     }
 
     @Test fun categoryBreakdownListsEverySpendingCategoryInPesos() {
@@ -147,34 +183,14 @@ class DashboardSimulatorE2ETest {
 
     // ---- goals ----
 
-    @Test fun savingsGoalsShowTheirProgressInPesos() {
+    @Test fun simulatorShowsAnEmptyGoalsStateInsteadOfPresetGoals() {
         rule.openTab("simulator")
         rule.waitForTag("simulator_list")
-        rule.scrollToTag("simulator_list", "goals_section")
-        SavingsGoal.PREPOPULATED_GOALS.forEach { goal ->
-            rule.scrollToText("simulator_list", goal.title)
-            rule.onNodeWithText(goal.title).assertIsDisplayed()
-            rule.onNodeWithText("${Money.format(goal.currentSaved)} of ${Money.format(goal.targetAmount)}").assertIsDisplayed()
-        }
-    }
-
-    @Test fun goalTimelineBadgesFollowTheFreedCashflow() {
-        rule.openTab("simulator")
-        rule.waitForTag("simulator_list")
-        val freed = spent(TransactionCategory.CAFES_DINING) * 0.20 +
-            spent(TransactionCategory.TECH_GADGETS) * 0.20 + spent(TransactionCategory.SUBSCRIPTIONS) * 0.15
-        SavingsGoal.PREPOPULATED_GOALS.forEach { goal ->
-            rule.scrollToText("simulator_list", goal.title)
-            rule.waitForText("at +${Money.formatWhole(freed)}/mo", substring = true)
-        }
-
-        setCut(TransactionCategory.CAFES_DINING, 0f)
-        setCut(TransactionCategory.TECH_GADGETS, 0f)
-        setCut(TransactionCategory.SUBSCRIPTIONS, 0f)
-        SavingsGoal.PREPOPULATED_GOALS.forEach { goal ->
-            rule.scrollToText("simulator_list", goal.title)
-            rule.waitForText("at baseline", substring = true)
-            assertEquals(0, rule.onAllNodesWithText("at +", substring = true).fetchSemanticsNodes().size)
+        rule.scrollToTag("simulator_list", "goals_empty")
+        rule.onNodeWithTag("goals_empty").assertIsDisplayed()
+        assertEquals(0, rule.onAllNodesWithTag("goals_section").fetchSemanticsNodes().size)
+        listOf("Emergency Reserve", "Dev Rig", "Tokyo").forEach { title ->
+            assertEquals("no preset goal '$title'", 0, rule.onAllNodesWithText(title, substring = true).fetchSemanticsNodes().size)
         }
     }
 }
