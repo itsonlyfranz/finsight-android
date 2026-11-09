@@ -11,7 +11,6 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -200,7 +199,7 @@ class TransactionsE2ETest {
         rule.waitGone("tx_title")
 
         assertEquals("an edit does not add or remove rows", "${seed.size} recorded entries", count())
-        listOf("-${Money.format(3100.5)}", "Transport", "Went with a cheaper one").forEach { text ->
+        listOf("-${Money.format(3100.5)}", TransactionCategory.TRANSPORT.displayName, "Went with a cheaper one").forEach { text ->
             rule.waitForIdle()
             rule.scrollToTag("transactions_list", "tx_${tx.id}")
             rule.assertCardShows("tx_${tx.id}", text)
@@ -218,8 +217,9 @@ class TransactionsE2ETest {
         openEditor(tx.id)
         rule.onNodeWithTag("tx_date").performClick()
         rule.waitForTag("tx_date_confirm")
-        rule.onAllNodes(hasText("$newDay"), useUnmergedTree = true).printToLog("DPDEBUG")
-        rule.onNode(hasText("$newDay") and hasClickAction()).performClick()
+        // Each M3 date-picker day cell is a button whose text is the full date, e.g. "Sunday, November 15, 2026".
+        val dayLabel = newDate.format(DateTimeFormatter.ofPattern("MMMM d, yyyy", Locale.US))
+        rule.onNode(hasText(dayLabel, substring = true) and hasClickAction()).performClick()
         rule.onNodeWithTag("tx_date_confirm").performClick()
         rule.waitGone("tx_date_confirm")
         rule.onNode(hasTestTag("tx_date") and hasText(header(newDate), substring = true)).assertIsDisplayed()

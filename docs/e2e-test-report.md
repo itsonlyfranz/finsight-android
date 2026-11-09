@@ -35,9 +35,9 @@ SharedPreferences, Keystore secrets, real `HttpHfApi` / `HttpModelDownloader`) i
 
 | Check | Result |
 |---|---|
-| `testDebugUnitTest` | 166 tests, 0 failures |
+| `testDebugUnitTest` | 176 tests, 0 failures |
 | `lintDebug` | passes |
-| `connectedDebugAndroidTest` (debug, emulator-5592) | 97 tests, 0 failures (61 new, 36 existing) |
+| `connectedDebugAndroidTest` (debug, API 36 emulator) | 114 tests, 0 failures, 1 skipped (the on-device model test that needs a downloaded model) |
 | `scripts/e2e-process-restart.sh` (write, `am force-stop`, verify in a new process) | pass |
 | Shrunk release: launch + `ReleaseShrinkSmokeTest` (`-PciDebugSigning -PciReleaseTests`) | pass, 0 crashes in logcat |
 
