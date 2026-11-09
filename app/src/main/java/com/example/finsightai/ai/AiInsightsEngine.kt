@@ -15,6 +15,10 @@ class AiInsightsEngine {
         monthlyIncome: Double = 45000.0,
         customBudgets: Map<TransactionCategory, Double> = emptyMap()
     ): List<AiInsight> {
+        // Nothing recorded yet (a fresh install): every insight below would be computed from zeros and
+        // read as a made-up claim ("on track", "saving 100%"), so say nothing until there is data.
+        if (transactions.isEmpty()) return emptyList()
+
         val insights = mutableListOf<AiInsight>()
 
         val expenseTransactions = transactions.filter { it.isExpense && it.category != TransactionCategory.SALARY }
@@ -146,12 +150,12 @@ class AiInsightsEngine {
         // 5. Contextual Tips for Early-Career Earners
         insights.add(
             AiInsight(
-                id = "insight_tip_401k_match",
-                title = "Capture Full 401(k) Employer Match",
-                description = "As a software engineer, your company likely offers a 3-5% 401(k) match. This represents an immediate 100% risk-free return on your money.",
+                id = "insight_tip_13th_month_pay",
+                title = "Plan Your 13th-Month Pay Before It Lands",
+                description = "If you are a regular employee, your 13th-month pay arrives as a one-time lump sum, and lump sums are the easiest money to spend without noticing. Deciding its job in advance turns it into a head start on your emergency fund.",
                 type = InsightType.TIP,
-                impactAmount = monthlyIncome * 0.04,
-                actionSuggestion = "Verify your HR payroll portal to ensure your elective deferral at least meets the full employer matching ceiling.",
+                impactAmount = monthlyIncome * 0.5,
+                actionSuggestion = "Set aside at least half of it for your emergency fund or a Pag-IBIG MP2 savings account, and make sure your SSS, PhilHealth and Pag-IBIG contributions are posting under your employer.",
                 severity = Severity.LOW
             )
         )

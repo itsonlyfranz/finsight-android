@@ -4,9 +4,17 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.getBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.test.printToLog
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -17,7 +25,7 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.finsightai.MainActivity
-import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.TransactionCategory
 import com.example.finsightai.util.Money
 import org.junit.After
@@ -30,6 +38,9 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 /**
  * The Transactions tab in the real activity over the real database: add, validation, delete,
@@ -40,7 +51,7 @@ class TransactionsE2ETest {
     @get:Rule val rule = createEmptyComposeRule()
     private val app = AppFixture()
     private lateinit var scenario: ActivityScenario<MainActivity>
-    private val seed = DefaultFinSightRepository.seedMarkSantosData()
+    private val seed = SampleData.markSantosTransactions()
     private val seedOutflow = seed.filter { it.isExpense && it.category != TransactionCategory.SALARY }.sumOf { it.amount }
 
     @Before fun setUp() {
@@ -151,6 +162,128 @@ class TransactionsE2ETest {
         assertEquals("${seed.size - 1} recorded entries", count())
         assertEquals(0, rule.onAllNodesWithText(tech.title).fetchSemanticsNodes().size)
         assertEquals(Money.format(seedOutflow - tech.amount), outflowOnDashboard())
+    }
+
+    // ---- edit ----
+
+    private fun openEditor(id: String) {
+        rule.scrollToTag("transactions_list", "edit_tx_$id").performClick()
+        rule.waitForTag("tx_title")
+    }
+
+    private fun fieldText(tag: String): String =
+        rule.onNodeWithTag(tag).fetchSemanticsNode().config[SemanticsProperties.EditableText].text
+
+    private fun stored(id: String) = app.database().getAllTransactions().single { it.id == id }
+
+    private fun header(date: LocalDate) = date.format(DateTimeFormatter.ofPattern("EEEE, MMM d, yyyy", Locale.US))
+
+    @Test fun tappingARowOpensTheEditorFilledWithItsCurrentValues() {
+        val tx = seed.first { it.id == "tx_tech_1" }
+        openEditor(tx.id)
+        rule.onNodeWithText("Edit Transaction").assertIsDisplayed()
+        assertEquals(tx.title, fieldText("tx_title"))
+        assertEquals("2950", fieldText("tx_amount"))
+        assertEquals("Banana switches upgrade", fieldText("tx_notes"))
+        rule.onNode(hasTestTag("tx_date") and hasText(header(tx.date), substring = true)).assertIsDisplayed()
+        rule.onNodeWithTag("tx_save").assertIsDisplayed()
+        rule.onNodeWithText("Save Changes").assertIsDisplayed()
+    }
+
+    @Test fun editingAmountCategoryAndNoteSavesThemEverywhere() {
+        val tx = seed.first { it.id == "tx_tech_1" }
+        openEditor(tx.id)
+        rule.onNodeWithTag("tx_amount").performTextReplacement("3100.5")
+        rule.onNodeWithTag("tx_category_TRANSPORT").performClick()
+        rule.onNodeWithTag("tx_notes").performTextReplacement("Went with a cheaper one")
+        rule.onNodeWithTag("tx_save").performClick()
+        rule.waitGone("tx_title")
+
+        assertEquals("an edit does not add or remove rows", "${seed.size} recorded entries", count())
+        listOf("-${Money.format(3100.5)}", "Transport", "Went with a cheaper one").forEach { text ->
+            rule.waitForIdle()
+            rule.scrollToTag("transactions_list", "tx_${tx.id}")
+            rule.assertCardShows("tx_${tx.id}", text)
+        }
+        assertEquals(Money.format(seedOutflow - 2950.0 + 3100.5), outflowOnDashboard())
+
+        val saved = stored(tx.id)
+        assertEquals(tx.copy(amount = 3100.5, category = TransactionCategory.TRANSPORT, notes = "Went with a cheaper one"), saved)
+    }
+
+    @Test fun editingTheDateMovesTheRowUnderThatDay() {
+        val tx = seed.first { it.id == "tx_groc_1" } // the 3rd of this month
+        val newDay = if (tx.date.dayOfMonth == 15) 16 else 15
+        val newDate = tx.date.withDayOfMonth(newDay)
+        openEditor(tx.id)
+        rule.onNodeWithTag("tx_date").performClick()
+        rule.waitForTag("tx_date_confirm")
+        rule.onAllNodes(hasText("$newDay"), useUnmergedTree = true).printToLog("DPDEBUG")
+        rule.onNode(hasText("$newDay") and hasClickAction()).performClick()
+        rule.onNodeWithTag("tx_date_confirm").performClick()
+        rule.waitGone("tx_date_confirm")
+        rule.onNode(hasTestTag("tx_date") and hasText(header(newDate), substring = true)).assertIsDisplayed()
+        rule.onNodeWithTag("tx_save").performClick()
+        rule.waitGone("tx_title")
+
+        rule.scrollToText("transactions_list", header(newDate))
+        rule.onNodeWithText(header(newDate)).assertIsDisplayed()
+        assertEquals(newDate, stored(tx.id).date)
+        assertEquals("${seed.size} recorded entries", count())
+    }
+
+    @Test fun editingSalaryIntoAnExpenseCategoryCountsItAsSpending() {
+        openEditor("tx_salary_1")
+        rule.onNodeWithTag("tx_category_LIFESTYLE").performClick()
+        rule.onNodeWithTag("tx_save").performClick()
+        rule.waitGone("tx_title")
+        rule.scrollToTag("transactions_list", "tx_tx_salary_1")
+        rule.assertCardShows("tx_tx_salary_1", "-${Money.format(45000.0)}")
+        assertEquals(Money.format(seedOutflow + 45000.0), outflowOnDashboard())
+        assertEquals(true, stored("tx_salary_1").isExpense)
+    }
+
+    @Test fun editRejectsABlankTitleAndABadAmountAndCancelChangesNothing() {
+        val tx = seed.first { it.id == "tx_tech_2" }
+        openEditor(tx.id)
+        rule.onNodeWithTag("tx_title").performTextReplacement("  ")
+        rule.onNodeWithTag("tx_save").performClick()
+        assertEquals("Please enter a transaction title", rule.textOf("tx_error"))
+
+        rule.onNodeWithTag("tx_title").performTextReplacement("Renamed")
+        rule.onNodeWithTag("tx_amount").performTextReplacement("0")
+        rule.onNodeWithTag("tx_save").performClick()
+        assertEquals("Please enter a valid amount greater than ${Money.format(0.0)}", rule.textOf("tx_error"))
+        rule.onNodeWithTag("tx_amount").performTextReplacement("NaN")
+        rule.onNodeWithTag("tx_save").performClick()
+        assertEquals("Please enter a valid amount greater than ${Money.format(0.0)}", rule.textOf("tx_error"))
+
+        rule.onNodeWithTag("tx_cancel").performClick()
+        rule.waitGone("tx_title")
+        assertEquals(tx, stored(tx.id))
+        assertEquals(Money.format(seedOutflow), outflowOnDashboard())
+    }
+
+    @Test fun theDeleteIconStillDeletesInsteadOfOpeningTheEditor() {
+        rule.scrollToTag("transactions_list", "delete_tx_tx_tech_3").performClick()
+        rule.waitForText("Delete Transaction?")
+        assertEquals(0, rule.onAllNodesWithTag("tx_title").fetchSemanticsNodes().size)
+        rule.onNodeWithTag("cancel_delete_tx").performClick()
+    }
+
+    // ---- the Add Expense button vs the list ----
+
+    @Test fun theAddExpenseButtonNeverSitsOverTheList() {
+        val fab = rule.onNodeWithTag("fab_add").getBoundsInRoot()
+        val list = rule.onNodeWithTag("transactions_list").getBoundsInRoot()
+        assertEquals("the list ends above the button, so no row can sit under it", true, list.bottom <= fab.top)
+
+        // Scroll the oldest rows (the bottom of the list) into view: neither delete icon is under the button.
+        listOf("tx_salary_1", "tx_rent_1").forEach { id ->
+            val delete = rule.scrollToTag("transactions_list", "delete_tx_$id").getBoundsInRoot()
+            val overlaps = delete.left < fab.right && delete.right > fab.left && delete.top < fab.bottom && delete.bottom > fab.top
+            assertEquals("$id's delete icon must not be covered by Add Expense", false, overlaps)
+        }
     }
 
     // ---- filters ----

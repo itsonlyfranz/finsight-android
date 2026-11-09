@@ -81,6 +81,17 @@ fun ForwardSimulatorScreen(
             HeaderSection()
         }
 
+        // Nothing recorded yet: say why the numbers below are zero instead of leaving them unexplained.
+        if (categoryBreakdown.isEmpty()) {
+            item {
+                Text(
+                    text = "No spending recorded yet. Add expenses in the Transactions tab and these levers will show what small cutbacks could free up.",
+                    modifier = Modifier.testTag("sim_empty_hint"),
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
+            }
+        }
+
         // Real-Time Projection Output Card
         item {
             ProjectionsSummaryCard(simulationResult = simulationResult)

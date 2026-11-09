@@ -37,7 +37,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -82,25 +81,35 @@ fun TransactionHistoryScreen(
     modifier: Modifier = Modifier
 ) {
     val filteredTransactions by viewModel.filteredTransactions.collectAsStateWithLifecycle()
+    val allTransactions by viewModel.transactions.collectAsStateWithLifecycle()
     val selectedCategory by viewModel.selectedCategoryFilter.collectAsStateWithLifecycle()
     var showAddDialog by remember { mutableStateOf(false) }
     var transactionToDelete by remember { mutableStateOf<Transaction?>(null) }
+    var transactionToEdit by remember { mutableStateOf<Transaction?>(null) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                modifier = Modifier.testTag("fab_add"),
-                onClick = { showAddDialog = true },
-                containerColor = EmeraldPrimary,
-                contentColor = Color.Black,
-                shape = RoundedCornerShape(16.dp),
-                icon = { Icon(Icons.Filled.Add, contentDescription = "Add Transaction") },
-                text = { Text("Add Expense", fontWeight = FontWeight.Bold) }
-            )
-        },
-        floatingActionButtonPosition = FabPosition.End
+        // The button lives in the bottom bar, not in the FAB slot: a floating button is drawn over the
+        // list and covers the last rows' delete icons, while a bar makes the list end above the button.
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.CenterEnd
+            ) {
+                ExtendedFloatingActionButton(
+                    modifier = Modifier.testTag("fab_add"),
+                    onClick = { showAddDialog = true },
+                    containerColor = EmeraldPrimary,
+                    contentColor = Color.Black,
+                    shape = RoundedCornerShape(16.dp),
+                    icon = { Icon(Icons.Filled.Add, contentDescription = "Add Transaction") },
+                    text = { Text("Add Expense", fontWeight = FontWeight.Bold) }
+                )
+            }
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -188,15 +197,20 @@ fun TransactionHistoryScreen(
                             tint = TextMuted,
                             modifier = Modifier.size(48.dp)
                         )
+                        val nothingRecorded = allTransactions.isEmpty()
                         Text(
-                            text = "No transactions found",
+                            text = if (nothingRecorded) "No transactions yet" else "No transactions found",
                             style = MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary
                             )
                         )
                         Text(
-                            text = "Try clearing the category filter or add a new transaction.",
+                            text = if (nothingRecorded) {
+                                "Tap Add Expense to record your first transaction. Spending, insights and the simulator fill in from there."
+                            } else {
+                                "Try clearing the category filter or add a new transaction."
+                            },
                             style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                         )
                     }
@@ -206,7 +220,7 @@ fun TransactionHistoryScreen(
 
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().testTag("transactions_list"),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 88.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     groupedByDate.forEach { (date, txs) ->
@@ -217,6 +231,7 @@ fun TransactionHistoryScreen(
                         items(txs, key = { it.id }) { tx ->
                             TransactionItemCard(
                                 transaction = tx,
+                                onEdit = { transactionToEdit = tx },
                                 onDelete = { transactionToDelete = tx }
                             )
                         }
@@ -230,6 +245,14 @@ fun TransactionHistoryScreen(
         AddTransactionDialog(
             viewModel = viewModel,
             onDismiss = { showAddDialog = false }
+        )
+    }
+
+    transactionToEdit?.let { tx ->
+        EditTransactionDialog(
+            viewModel = viewModel,
+            transaction = tx,
+            onDismiss = { transactionToEdit = null }
         )
     }
 
@@ -364,6 +387,7 @@ private fun DateHeader(date: String) {
 @Composable
 private fun TransactionItemCard(
     transaction: Transaction,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val color = transaction.category.categoryColor()
@@ -379,6 +403,8 @@ private fun TransactionItemCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .testTag("edit_tx_${transaction.id}")
+                .clickable(onClickLabel = "Edit transaction", onClick = onEdit)
                 .padding(14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween

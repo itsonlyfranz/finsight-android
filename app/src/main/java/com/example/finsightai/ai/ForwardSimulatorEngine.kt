@@ -62,6 +62,22 @@ class ForwardSimulatorEngine(
         )
     }
 
+    /**
+     * What cutting [cutFraction] of the spending in [categories] every month would grow to after
+     * [months], from the user's own [baselineSpending]. Returns 0.0 when there is nothing to cut, so
+     * callers can hide the figure instead of showing a made-up one.
+     */
+    fun quickCutProjection(
+        baselineSpending: Map<TransactionCategory, Double>,
+        categories: Set<TransactionCategory> = setOf(TransactionCategory.CAFES_DINING, TransactionCategory.TECH_GADGETS),
+        cutFraction: Double = 0.20,
+        months: Int = 12,
+        annualYield: Double = defaultAnnualYield
+    ): Double {
+        val monthlySaved = categories.sumOf { baselineSpending[it] ?: 0.0 } * cutFraction.coerceIn(0.0, 1.0)
+        return roundToTwoDecimals(calculateCompoundSavings(roundToTwoDecimals(monthlySaved), months, annualYield))
+    }
+
     fun calculateMonthsToGoal(
         targetAmount: Double,
         currentSaved: Double,

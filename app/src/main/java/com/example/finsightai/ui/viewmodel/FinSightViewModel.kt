@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.finsightai.ai.AiEnhancer
+import com.example.finsightai.ai.ForwardSimulatorEngine
 import com.example.finsightai.ai.GeneratedText
 import com.example.finsightai.ai.InsightRewrite
 import com.example.finsightai.ai.NoGenerativeSource
@@ -57,6 +58,7 @@ class FinSightViewModel(
 ) : ViewModel() {
 
     private val enhancer = AiEnhancer(aiRouter ?: NoGenerativeSource)
+    private val quickCutEngine = ForwardSimulatorEngine()
 
     private data class CachedRewrite(val signature: String, val rewrite: InsightRewrite)
     private data class CachedNarration(
@@ -118,6 +120,18 @@ class FinSightViewModel(
             scope = viewModelScope,
             started = SharingStarted.Eagerly,
             initialValue = repository.getCategoryBreakdown()
+        )
+
+    /**
+     * What a 20% cut in cafe/dining and tech spending would compound to in 12 months, worked out from the
+     * user's own spending (the Dashboard simulator card). 0.0 when there is nothing to cut.
+     */
+    val quickCutProjection12M: StateFlow<Double> = categoryBreakdown
+        .map { quickCutEngine.quickCutProjection(it) }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = quickCutEngine.quickCutProjection(repository.getCategoryBreakdown())
         )
 
     val sliderReductions = MutableStateFlow<Map<TransactionCategory, Float>>(
@@ -282,6 +296,34 @@ class FinSightViewModel(
 
     fun deleteTransaction(id: String) {
         repository.deleteTransaction(id)
+    }
+
+    /**
+     * Saves an edited transaction. Whether it counts as spending follows the category, exactly as when it
+     * was added (Salary is income, everything else an expense). Returns false for a blank title or a
+     * non-positive / non-finite amount, in which case nothing is written.
+     */
+    fun updateTransaction(
+        original: Transaction,
+        title: String,
+        amount: Double,
+        category: TransactionCategory,
+        date: LocalDate,
+        notes: String
+    ): Boolean {
+        val trimmedTitle = title.trim()
+        if (trimmedTitle.isEmpty() || !amount.isFinite() || amount <= 0.0) return false
+        repository.updateTransaction(
+            original.copy(
+                title = trimmedTitle,
+                amount = amount,
+                category = category,
+                date = date,
+                isExpense = (category != TransactionCategory.SALARY),
+                notes = notes.trim()
+            )
+        )
+        return true
     }
 
     fun updateSliderReduction(category: TransactionCategory, percentage: Float) {

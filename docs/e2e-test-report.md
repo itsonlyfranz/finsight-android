@@ -12,7 +12,7 @@ SharedPreferences, Keystore secrets, real `HttpHfApi` / `HttpModelDownloader`) i
 |---|---|---|
 | Dashboard (profile, outflow, target, buffer, breakdown, links) | none (unit only for the view model) | `DashboardSimulatorE2ETest` |
 | Transactions: add | none | `TransactionsE2ETest` (expense, income, validation, cancel) |
-| Transactions: edit | none | **No edit screen exists in the app** (see findings). Repository edit is covered in `SqlitePersistenceE2ETest` |
+| Transactions: edit | none | Edit dialog added after this pass: `TransactionsE2ETest` (prefill, amount/category/note/date, income vs expense, validation, cancel); repository edit in `SqlitePersistenceE2ETest` |
 | Transactions: delete | none | `TransactionsE2ETest` (confirm / cancel, totals update) |
 | Transaction filters | none | `TransactionsE2ETest` (every category, All, empty state, survives tab switch) |
 | CSV export | `CsvExporterTest` (string only) | `TransactionsE2ETest`: the shared file's contents, numeric amounts, filter, escaping |
@@ -41,19 +41,24 @@ SharedPreferences, Keystore secrets, real `HttpHfApi` / `HttpModelDownloader`) i
 | `scripts/e2e-process-restart.sh` (write, `am force-stop`, verify in a new process) | pass |
 | Shrunk release: launch + `ReleaseShrinkSmokeTest` (`-PciDebugSigning -PciReleaseTests`) | pass, 0 crashes in logcat |
 
-## Findings (not fixed here)
+## Findings
 
-1. **No way to edit a transaction.** `FinSightRepository.updateTransaction` exists but no view model
-   function or screen uses it. Needs a product decision (add an edit dialog, or drop "edit" from scope).
-2. **Deleting every transaction brings the demo data back on the next start.**
-   `FinSightDatabaseHelper.checkAndSeedIfEmpty` re-seeds whenever the table is empty (verified: 38 rows
-   after deleting all and reopening). A user who clears everything gets Mark Santos' demo data again.
-   Needs a decision (seed once, e.g. with a flag in `settings`).
-3. Minor: the insights engine still talks about a "401(k) employer match" for a peso/Philippine user;
-   the dashboard simulator card hard-codes "₱35,000+ in 12M".
-4. Minor UX: with the list scrolled so a row sits at the bottom edge, the Add Expense button covers that
-   row's delete icon (tests scroll the row to a clear position).
-5. Infra: CI's "Stop emulator" step runs `adb emu kill` on every emulator, so concurrent runs and
+Items 1-4 were found in this pass and have since been resolved in a follow-up PR:
+
+1. **No way to edit a transaction.** Resolved: tapping a row opens an edit dialog (amount, category, date,
+   note) backed by `FinSightRepository.updateTransaction`.
+2. **Deleting every transaction brought the demo data back on the next start.** Resolved by not seeding
+   demo data at all: a fresh install starts empty with empty states on every screen, and nothing re-adds
+   sample data. Existing installs are untouched. Tests build their own data (`SampleData`).
+3. Minor: the "401(k) employer match" insight and the hard-coded "₱35,000+ in 12M" on the dashboard
+   simulator card. Resolved: a 13th-month-pay tip, and the card computes the figure from the user's own
+   cafe and tech spending (or hides it when there is none).
+4. Minor UX: the Add Expense button covered the delete icon of a row at the bottom of the list. Resolved:
+   the button sits in a bottom bar, so the list ends above it.
+
+Still open:
+
+1. Infra: CI's "Stop emulator" step runs `adb emu kill` on every emulator, so concurrent runs and
    local emulators die (observed twice while writing this). Out of scope here (separate held task).
    The `main` push run 42557240033 failed in "Smoke-test shrunk release on emulator", consistent with this.
 

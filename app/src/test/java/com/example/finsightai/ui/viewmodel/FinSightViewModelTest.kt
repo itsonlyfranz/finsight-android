@@ -1,6 +1,8 @@
 package com.example.finsightai.ui.viewmodel
 
+import com.example.finsightai.ai.ForwardSimulatorEngine
 import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.model.TransactionCategory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,7 +30,7 @@ class FinSightViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        repository = DefaultFinSightRepository()
+        repository = SampleData.repository()
         viewModel = FinSightViewModel(repository)
     }
 
@@ -98,6 +100,79 @@ class FinSightViewModelTest {
         val remaining = viewModel.transactions.value
         assertFalse("Deleted transaction should not be in list", remaining.any { it.id == toDelete.id })
         assertEquals(initialTransactions.size - 1, remaining.size)
+    }
+
+    @Test
+    fun updateTransaction_savesEditedAmountCategoryDateAndNote() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        val original = viewModel.transactions.value.first { it.id == "tx_cafe_1" }
+        val spentBefore = viewModel.totalSpent.value
+
+        val saved = viewModel.updateTransaction(
+            original = original,
+            title = "  Corrected title ",
+            amount = 999.5,
+            category = TransactionCategory.GROCERIES,
+            date = LocalDate.of(2026, 3, 14),
+            notes = "  edited "
+        )
+        advanceUntilIdle()
+
+        assertTrue(saved)
+        val edited = viewModel.transactions.value.single { it.id == "tx_cafe_1" }
+        assertEquals("Corrected title", edited.title)
+        assertEquals(999.5, edited.amount, 0.0)
+        assertEquals(TransactionCategory.GROCERIES, edited.category)
+        assertEquals(LocalDate.of(2026, 3, 14), edited.date)
+        assertEquals("edited", edited.notes)
+        assertTrue(edited.isExpense)
+        assertEquals(spentBefore - original.amount + 999.5, viewModel.totalSpent.value, 0.01)
+    }
+
+    @Test
+    fun updateTransaction_followsTheCategoryForIncomeVersusExpense() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        val spentBefore = viewModel.totalSpent.value
+        val salary = viewModel.transactions.value.first { it.category == TransactionCategory.SALARY }
+        assertFalse(salary.isExpense)
+
+        viewModel.updateTransaction(salary, salary.title, salary.amount, TransactionCategory.LIFESTYLE, salary.date, salary.notes)
+        advanceUntilIdle()
+        val asExpense = viewModel.transactions.value.single { it.id == salary.id }
+        assertTrue(asExpense.isExpense)
+        assertEquals(spentBefore + salary.amount, viewModel.totalSpent.value, 0.01)
+
+        viewModel.updateTransaction(asExpense, asExpense.title, asExpense.amount, TransactionCategory.SALARY, asExpense.date, asExpense.notes)
+        advanceUntilIdle()
+        assertFalse(viewModel.transactions.value.single { it.id == salary.id }.isExpense)
+        assertEquals(spentBefore, viewModel.totalSpent.value, 0.01)
+    }
+
+    @Test
+    fun updateTransaction_rejectsABlankTitleAndABadAmountWithoutWriting() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        val original = viewModel.transactions.value.first { it.id == "tx_cafe_1" }
+        val before = viewModel.transactions.value
+
+        for ((title, amount) in listOf("   " to 10.0, "ok" to 0.0, "ok" to -5.0, "ok" to Double.NaN, "ok" to Double.POSITIVE_INFINITY)) {
+            assertFalse("$title / $amount must be refused", viewModel.updateTransaction(original, title, amount, original.category, original.date, original.notes))
+        }
+        advanceUntilIdle()
+        assertEquals(before, viewModel.transactions.value)
+    }
+
+    @Test
+    fun quickCutProjection_isWorkedOutFromTheUsersOwnSpendingAndZeroWhenThereIsNone() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        // Sample data: PHP 8,800 cafes + PHP 5,900 tech, 20% of that saved monthly, compounded 12 months at 4.5%.
+        val expected = ForwardSimulatorEngine().calculateCompoundSavings(monthlyDeposit = (8800.0 + 5900.0) * 0.20, months = 12)
+        assertEquals(expected, viewModel.quickCutProjection12M.value, 0.01)
+
+        val empty = FinSightViewModel(DefaultFinSightRepository())
+        advanceUntilIdle()
+        assertEquals(0.0, empty.quickCutProjection12M.value, 0.0)
+        assertTrue(empty.transactions.value.isEmpty())
+        assertTrue(empty.insights.value.isEmpty())
     }
 
     @Test

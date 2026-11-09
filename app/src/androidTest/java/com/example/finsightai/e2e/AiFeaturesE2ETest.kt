@@ -14,7 +14,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.example.finsightai.MainNavigation
-import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.testdata.SampleData
 import com.example.finsightai.llm.CuratedModels
 import com.example.finsightai.theme.FinSightAITheme
 import com.example.finsightai.ui.aisetup.AiSetupViewModel
@@ -41,7 +41,7 @@ class AiFeaturesE2ETest {
         lateinit var finsight: FinSightViewModel
         lateinit var setup: AiSetupViewModel
         rule.runOnUiThread {
-            finsight = FinSightViewModel(DefaultFinSightRepository(), h.services.router, h.services.signal)
+            finsight = FinSightViewModel(SampleData.repository(), h.services.router, h.services.signal)
             setup = AiSetupViewModel(h.services)
         }
         rule.setContent { FinSightAITheme { MainNavigation(viewModel = finsight, aiSetupViewModel = setup) } }

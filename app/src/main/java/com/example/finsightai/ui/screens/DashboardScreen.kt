@@ -90,6 +90,7 @@ fun DashboardScreen(
     val categoryBreakdown by viewModel.categoryBreakdown.collectAsStateWithLifecycle()
     val insights by viewModel.insights.collectAsStateWithLifecycle()
     val currentTheme by viewModel.appTheme.collectAsStateWithLifecycle()
+    val quickCutProjection by viewModel.quickCutProjection12M.collectAsStateWithLifecycle()
 
     val remainingBuffer = (monthlyIncome - totalSpent).coerceAtLeast(0.0)
     val spendProgress = if (monthlyIncome > 0) (totalSpent / monthlyIncome).toFloat().coerceIn(0f, 1f) else 0f
@@ -102,7 +103,7 @@ fun DashboardScreen(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
     ) {
-        // 1. Welcome Header (Mark Santos - Junior SWE)
+        // 1. Welcome Header
         item {
             HeaderSection(
                 currentTheme = currentTheme,
@@ -123,6 +124,7 @@ fun DashboardScreen(
         // 3. Quick Action Forward Simulator Promo Card
         item {
             SimulatorQuickActionCard(
+                projected12M = quickCutProjection,
                 onNavigateToSimulator = onNavigateToSimulator
             )
         }
@@ -182,21 +184,21 @@ private fun HeaderSection(
             }
             Spacer(modifier = Modifier.height(2.dp))
             Text(
-                text = "Welcome back, Mark Santos",
+                text = "Welcome back",
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = TextPrimary,
                     fontWeight = FontWeight.SemiBold
                 )
             )
             Text(
-                text = "Junior SWE @ Apex Systems",
+                text = "Your spending, savings and habits at a glance",
                 style = MaterialTheme.typography.bodySmall.copy(
                     color = TextSecondary
                 )
             )
         }
 
-        // Theme Selector Chip next to Mark Santos' profile avatar
+        // Theme Selector Chip next to the profile avatar
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -215,11 +217,11 @@ private fun HeaderSection(
                     .border(1.dp, EmeraldPrimary.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "MS",
-                    fontWeight = FontWeight.Bold,
-                    color = BrightEmerald,
-                    fontSize = 15.sp
+                Icon(
+                    imageVector = Icons.Filled.Person,
+                    contentDescription = null,
+                    tint = BrightEmerald,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }
@@ -421,11 +423,13 @@ private fun SpendingSummaryCard(
 
 @Composable
 private fun SimulatorQuickActionCard(
+    projected12M: Double,
     onNavigateToSimulator: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
+            .testTag("simulator_card")
             .clip(RoundedCornerShape(18.dp))
             .border(1.dp, EmeraldBorder, RoundedCornerShape(18.dp))
             .clickable { onNavigateToSimulator() },
@@ -468,7 +472,13 @@ private fun SimulatorQuickActionCard(
                         )
                     )
                     Text(
-                        text = "Simulate 20% cafe & tech cuts compounding to ₱35,000+ in 12M",
+                        // The figure comes from the user's own cafe & tech spending; with none recorded
+                        // there is nothing honest to promise, so the card only describes what it does.
+                        text = if (projected12M > 0.0) {
+                            "Simulate 20% cafe & tech cuts compounding to ${Money.formatWhole(projected12M)} in 12M"
+                        } else {
+                            "Model how small cutbacks on cafes, tech and subscriptions compound over 12 months"
+                        },
                         style = MaterialTheme.typography.bodySmall.copy(
                             color = TextSecondary
                         )
@@ -523,6 +533,14 @@ private fun CategoryBreakdownCard(
             // Top expense categories sorted by spend
             val sortedCategories = categoryBreakdown.entries
                 .sortedByDescending { it.value }
+
+            if (sortedCategories.isEmpty()) {
+                Text(
+                    text = "No spending recorded yet. Add an expense in the Transactions tab and your categories show up here.",
+                    modifier = Modifier.testTag("breakdown_empty"),
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
+            }
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 sortedCategories.forEach { (cat, amount) ->
@@ -653,6 +671,14 @@ private fun TopInsightsPreviewCard(
                         fontWeight = FontWeight.Bold
                     ),
                     modifier = Modifier.clickable { onNavigateToInsights() }
+                )
+            }
+
+            if (insights.isEmpty()) {
+                Text(
+                    text = "Insights appear here once you have recorded some transactions.",
+                    modifier = Modifier.testTag("insights_preview_empty"),
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                 )
             }
 

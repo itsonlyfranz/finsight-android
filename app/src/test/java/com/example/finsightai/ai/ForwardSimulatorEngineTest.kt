@@ -147,4 +147,26 @@ class ForwardSimulatorEngineTest {
         // Target ₱44,800, saved ₱11,200 -> remaining ₱33,600 / 6,692 = ceil(5.02) = 6 months
         assertEquals(6, devRigGoal!!.monthsToReach)
     }
+
+    @Test
+    fun `quick cut projection compounds 20 percent of cafe and tech spending over 12 months`() {
+        val baseline = mapOf(
+            TransactionCategory.CAFES_DINING to 8800.0,
+            TransactionCategory.TECH_GADGETS to 5900.0,
+            TransactionCategory.SUBSCRIPTIONS to 3496.0 // not part of the quick cut
+        )
+        val monthly = (8800.0 + 5900.0) * 0.20
+        assertEquals(
+            simulator.calculateCompoundSavings(monthly, 12),
+            simulator.quickCutProjection(baseline),
+            0.01
+        )
+        assertTrue(simulator.quickCutProjection(baseline) > monthly * 12)
+    }
+
+    @Test
+    fun `quick cut projection is zero when there is nothing to cut`() {
+        assertEquals(0.0, simulator.quickCutProjection(emptyMap()), 0.0)
+        assertEquals(0.0, simulator.quickCutProjection(mapOf(TransactionCategory.GROCERIES to 4200.0)), 0.0)
+    }
 }

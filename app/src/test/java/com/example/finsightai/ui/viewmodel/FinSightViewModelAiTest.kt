@@ -5,7 +5,7 @@ import com.example.finsightai.ai.backend.AiBackendRouter
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.ai.backend.BackendChoice
 import com.example.finsightai.ai.backend.TextGenerator
-import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.testdata.SampleData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -40,11 +40,11 @@ class FinSightViewModelAiTest {
 
     private fun vm(generator: FakeGenerator, signal: MutableStateFlow<Int>): FinSightViewModel {
         val router = AiBackendRouter(MutableStateFlow(BackendChoice.ON_DEVICE), mapOf(BackendChoice.ON_DEVICE to generator))
-        return FinSightViewModel(DefaultFinSightRepository(), router, signal)
+        return FinSightViewModel(SampleData.repository(), router, signal)
     }
 
     @Test fun readyModelRewritesInsightsSimulationAndGoalsButNotTheNumbers() = runTest(dispatcher) {
-        val baseline = FinSightViewModel(DefaultFinSightRepository())
+        val baseline = FinSightViewModel(SampleData.repository())
         val generator = FakeGenerator(true, "INSIGHT: Rewritten by the model.\nACTION: Do the thing.")
         val viewModel = vm(generator, MutableStateFlow(0))
         advanceUntilIdle()

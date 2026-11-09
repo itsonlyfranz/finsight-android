@@ -11,7 +11,7 @@
 
 </div>
 
-> **Upgrading from v1.0.0?** v1.1.0 is signed with a new release key, so uninstall v1.0.0 first. Uninstalling deletes the app's saved data on that phone; the new install starts with the peso (₱) demo data. Later updates signed with this key install over v1.1.0 and keep your saved amounts; to get the peso demo data then, clear the app's data (Settings → Apps → FinSight AI → Storage → Clear data).
+> **Upgrading from v1.0.0?** v1.1.0 is signed with a new release key, so uninstall v1.0.0 first. Uninstalling deletes the app's saved data on that phone. Later updates signed with this key install over v1.1.0 and keep your saved amounts.
 
 FinSight AI is a native Android application built with **Jetpack Compose**, **Material 3**, **SQLite on-device persistence**, and an on-device **AI Behavioral Insights & Forward Simulation Engine**. It bridges the gap between passive expense logging and active financial planning for young professionals facing early-career lifestyle inflation.
 
@@ -58,7 +58,8 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 ### 1. On-Device SQLite Persistence
 - Powered by `FinSightDatabaseHelper` managing `transactions`, `budgets`, and `settings` tables.
 - All changes persist permanently on device across app restarts.
-- Auto-seeds with the Mark Santos dataset on first launch: amounts are in Philippine pesos (₱) and sized to the persona's ₱45,000/month income. Updating over v1.1.0 or later keeps saved amounts; clear the app's data to get the peso demo data. Upgrading from v1.0.0 requires an uninstall, which deletes saved data.
+- A new install starts empty: no demo transactions are added, every screen shows an empty state that says what to do next, and deleting everything never brings sample data back. Existing installs keep their saved data untouched. Amounts are in Philippine pesos (₱). Upgrading from v1.0.0 requires an uninstall, which deletes saved data.
+- Tap a transaction to edit its amount, category, date and note; the trash icon deletes it.
 
 ### 2. CSV Data Export & Sharing (From Impact-Effort Matrix)
 - Export transactions into RFC 4180-compliant CSV format with a single tap.
@@ -66,7 +67,7 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 
 ### 3. AI Behavioral Insights Engine
 - `AiInsightsEngine` evaluates spending velocity, cafe hopping frequency (>8 visits/mo), and tech discretionary spikes.
-- Emits **Risk Nudges** (spending warnings), **Growth Focus** (positive reinforcement), and **Career Pro Tips** (401k match, WFH stipends).
+- Emits **Risk Nudges** (spending warnings), **Growth Focus** (positive reinforcement), and **Career Pro Tips** (13th-month pay, WFH stipends).
 
 ### 4. Goal-Oriented Forward Simulator
 - Interactive cutback sliders (Dining, Tech, Subscriptions).

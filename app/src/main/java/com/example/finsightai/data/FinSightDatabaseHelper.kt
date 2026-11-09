@@ -17,6 +17,7 @@ class FinSightDatabaseHelper(
     companion object {
         const val DATABASE_NAME = "finsight_ai.db"
         const val DATABASE_VERSION = 1
+        const val DEFAULT_MONTHLY_INCOME = 45000.0
 
         const val TABLE_TRANSACTIONS = "transactions"
         const val COL_TX_ID = "id"
@@ -69,7 +70,7 @@ class FinSightDatabaseHelper(
             """.trimIndent()
         )
 
-        seedDatabase(db)
+        seedDefaults(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -79,39 +80,15 @@ class FinSightDatabaseHelper(
         onCreate(db)
     }
 
-    fun checkAndSeedIfEmpty() {
-        val db = writableDatabase
-        val cursor = db.rawQuery("SELECT COUNT(*) FROM $TABLE_TRANSACTIONS", null)
-        var count = 0
-        if (cursor.moveToFirst()) {
-            count = cursor.getInt(0)
-        }
-        cursor.close()
-
-        if (count == 0) {
-            seedDatabase(db)
-        }
-    }
-
-    private fun seedDatabase(db: SQLiteDatabase) {
+    /**
+     * Writes the neutral defaults a new database needs (per-category budget targets and settings).
+     * Transactions are deliberately not seeded: a fresh install starts with none, and nothing ever
+     * adds sample data back later, so deleting everything leaves the list empty.
+     */
+    private fun seedDefaults(db: SQLiteDatabase) {
         db.beginTransaction()
         try {
-            // Seed transactions
-            val seedTxs = DefaultFinSightRepository.seedMarkSantosData()
-            for (tx in seedTxs) {
-                val cv = ContentValues().apply {
-                    put(COL_TX_ID, tx.id)
-                    put(COL_TX_TITLE, tx.title)
-                    put(COL_TX_AMOUNT, tx.amount)
-                    put(COL_TX_CATEGORY, tx.category.name)
-                    put(COL_TX_DATE, tx.date.toString())
-                    put(COL_TX_IS_EXPENSE, if (tx.isExpense) 1 else 0)
-                    put(COL_TX_NOTES, tx.notes)
-                }
-                db.insertWithOnConflict(TABLE_TRANSACTIONS, null, cv, SQLiteDatabase.CONFLICT_REPLACE)
-            }
-
-            // Seed default budgets
+            // Default budgets
             for (category in TransactionCategory.values()) {
                 if (category != TransactionCategory.SALARY) {
                     val cv = ContentValues().apply {
@@ -122,9 +99,9 @@ class FinSightDatabaseHelper(
                 }
             }
 
-            // Seed default settings
+            // Default settings
             val defaultSettings = mapOf(
-                "monthly_income" to "45000.0",
+                "monthly_income" to DEFAULT_MONTHLY_INCOME.toString(),
                 "app_theme" to "DECK_EMERALD"
             )
             for ((key, value) in defaultSettings) {
@@ -278,8 +255,8 @@ class FinSightDatabaseHelper(
     }
 
     fun getMonthlyIncome(): Double {
-        val str = getSetting("monthly_income", "45000.0")
-        return str.toDoubleOrNull() ?: 45000.0
+        val str = getSetting("monthly_income", DEFAULT_MONTHLY_INCOME.toString())
+        return str.toDoubleOrNull() ?: DEFAULT_MONTHLY_INCOME
     }
 
     fun setMonthlyIncome(income: Double) {
