@@ -190,6 +190,16 @@ class FinSightViewModelTest {
     }
 
     @Test
+    fun simulatorHasNoPresetSavingsGoalsWithOrWithoutData() = runTest(testDispatcher) {
+        advanceUntilIdle()
+        // The app ships no goals: neither a fresh install nor one with spending shows invented progress.
+        assertTrue(viewModel.simulationResult.value.goalProjections.isEmpty())
+        val empty = FinSightViewModel(DefaultFinSightRepository())
+        advanceUntilIdle()
+        assertTrue(empty.simulationResult.value.goalProjections.isEmpty())
+    }
+
+    @Test
     fun updateSliderReduction_recomputesSimulation() = runTest(testDispatcher) {
         advanceUntilIdle()
         val initialSim = viewModel.simulationResult.value

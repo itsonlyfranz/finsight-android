@@ -7,36 +7,7 @@ data class SavingsGoal(
     val currentSaved: Double,
     val icon: String,
     val description: String
-) {
-    companion object {
-        val PREPOPULATED_GOALS = listOf(
-            SavingsGoal(
-                id = "goal_emergency",
-                title = "Emergency Reserve (3 Months)",
-                targetAmount = 75600.0,
-                currentSaved = 29400.0,
-                icon = "🛡️",
-                description = "Living expenses cushion for peace of mind"
-            ),
-            SavingsGoal(
-                id = "goal_dev_rig",
-                title = "M4 Pro Dev Rig & Setup",
-                targetAmount = 44800.0,
-                currentSaved = 11200.0,
-                icon = "💻",
-                description = "Next-gen workspace & hardware upgrade"
-            ),
-            SavingsGoal(
-                id = "goal_tokyo_tour",
-                title = "Tokyo Cafe & Tech Tour",
-                targetAmount = 35000.0,
-                currentSaved = 6300.0,
-                icon = "✈️",
-                description = "Akihabara tech hunt & Tokyo pour-overs"
-            )
-        )
-    }
-}
+)
 
 data class GoalProjection(
     val goal: SavingsGoal,

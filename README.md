@@ -72,7 +72,7 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 ### 4. Goal-Oriented Forward Simulator
 - Interactive cutback sliders (Dining, Tech, Subscriptions).
 - Computes deterministic compound projections for 3, 6, and 12-month horizons.
-- **Financial Goals Countdown**: Dynamic countdowns for Emergency Reserve (3 months buffer), Dev Rig Setup, and Travel.
+- **Financial Goals Countdown**: Dynamic countdowns showing how freed cashflow speeds up savings goals. The app ships no preset goals, so a fresh Simulator shows an empty goals state.
 - **AI Milestone Context**: Natural-language encouragement contextualizing saved pesos into tangible life wins.
 
 ### 5. Multi-Theme Customizer

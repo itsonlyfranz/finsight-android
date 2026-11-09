@@ -19,7 +19,7 @@ class ForwardSimulatorEngine(
         baselineSpending: Map<TransactionCategory, Double>,
         targetReductions: Map<TransactionCategory, Float>,
         annualYield: Double = defaultAnnualYield,
-        goals: List<SavingsGoal> = SavingsGoal.PREPOPULATED_GOALS,
+        goals: List<SavingsGoal> = emptyList(),
         baseSavings: Double = defaultBaseSavings
     ): SimulationResult {
         var totalMonthlySavings = 0.0
@@ -92,7 +92,7 @@ class ForwardSimulatorEngine(
     }
 
     fun projectGoals(
-        goals: List<SavingsGoal> = SavingsGoal.PREPOPULATED_GOALS,
+        goals: List<SavingsGoal> = emptyList(),
         freedMonthlyCashflow: Double,
         baseSavings: Double = defaultBaseSavings,
         referenceDate: LocalDate = LocalDate.now()

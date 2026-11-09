@@ -1,6 +1,7 @@
 package com.example.finsightai.ai
 
 import com.example.finsightai.model.TransactionCategory
+import com.example.finsightai.testdata.SampleData
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -131,6 +132,7 @@ class ForwardSimulatorEngineTest {
     @Test
     fun `projectGoals produces dynamic badges and timeline projections`() {
         val projections = simulator.projectGoals(
+            goals = SampleData.goals(),
             freedMonthlyCashflow = 2492.0
         )
 

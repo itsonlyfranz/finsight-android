@@ -1,6 +1,7 @@
 package com.example.finsightai.testdata
 
 import com.example.finsightai.data.DefaultFinSightRepository
+import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
 import java.time.LocalDate
@@ -88,6 +89,34 @@ object SampleData {
             Transaction(id = "tx_trans_2", title = "Uber Weekend Transit", amount = 750.00, category = TransactionCategory.TRANSPORT, date = LocalDate.of(year, month, 18))
         ).sortedByDescending { it.date }
     }
+
+    /** Test-only savings goals (the app ships none; a fresh Simulator shows an empty goals state). */
+    fun goals(): List<SavingsGoal> = listOf(
+        SavingsGoal(
+            id = "goal_emergency",
+            title = "Emergency Reserve (3 Months)",
+            targetAmount = 75600.0,
+            currentSaved = 29400.0,
+            icon = "🛡️",
+            description = "Living expenses cushion for peace of mind"
+        ),
+        SavingsGoal(
+            id = "goal_dev_rig",
+            title = "M4 Pro Dev Rig & Setup",
+            targetAmount = 44800.0,
+            currentSaved = 11200.0,
+            icon = "💻",
+            description = "Next-gen workspace & hardware upgrade"
+        ),
+        SavingsGoal(
+            id = "goal_tokyo_tour",
+            title = "Tokyo Cafe & Tech Tour",
+            targetAmount = 35000.0,
+            currentSaved = 6300.0,
+            icon = "✈️",
+            description = "Akihabara tech hunt & Tokyo pour-overs"
+        )
+    )
 
     /** An in-memory repository pre-filled with [markSantosTransactions]. */
     fun repository(): DefaultFinSightRepository = DefaultFinSightRepository().also { repo ->

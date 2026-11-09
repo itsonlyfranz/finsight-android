@@ -104,6 +104,14 @@ fun ForwardSimulatorScreen(
                     FinancialGoalsCountdownSection(goalProjections = simulationResult.goalProjections)
                 }
             }
+        } else {
+            item {
+                Text(
+                    text = "No savings goals yet. Once you have goals, this section will show how your cutbacks speed them up.",
+                    modifier = Modifier.testTag("goals_empty"),
+                    style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
+                )
+            }
         }
 
         // AI Context Explanation Card

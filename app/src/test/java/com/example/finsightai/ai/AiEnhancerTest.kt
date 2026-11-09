@@ -3,8 +3,8 @@ package com.example.finsightai.ai
 import com.example.finsightai.ai.backend.AiRequest
 import com.example.finsightai.model.AiInsight
 import com.example.finsightai.model.InsightType
-import com.example.finsightai.model.SavingsGoal
 import com.example.finsightai.model.TransactionCategory
+import com.example.finsightai.testdata.SampleData
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -49,7 +49,7 @@ class AiEnhancerTest {
 
     @Test fun goalContextIsGrounded() = runTest {
         val projection = com.example.finsightai.ai.ForwardSimulatorEngine()
-            .projectGoals(SavingsGoal.PREPOPULATED_GOALS, 200.0).first()
+            .projectGoals(SampleData.goals(), 200.0).first()
         val ok = AiEnhancer(source("You still need ₱46,200.00 for the emergency fund.")).goalMilestoneContext(projection, 200.0)
         assertNotNull(ok)
         val bad = AiEnhancer(source("You need ₱1.00 more.")).goalMilestoneContext(projection, 200.0)

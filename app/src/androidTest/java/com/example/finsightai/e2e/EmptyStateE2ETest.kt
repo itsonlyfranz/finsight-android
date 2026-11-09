@@ -2,6 +2,7 @@ package com.example.finsightai.e2e
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -84,6 +85,15 @@ class EmptyStateE2ETest {
             rule.scrollToTag("simulator_list", "sim_monthly_freed")
             rule.textOf("sim_monthly_freed")
         })
+    }
+
+    @Test fun simulatorTabShowsNoPresetSavingsGoals() {
+        rule.openTab("simulator")
+        rule.waitForTag("simulator_list")
+        rule.scrollToTag("simulator_list", "goals_empty")
+        rule.onNodeWithTag("goals_empty").assertIsDisplayed()
+        assertEquals(0, rule.onAllNodesWithTag("goals_section").fetchSemanticsNodes().size)
+        assertEquals(0, rule.onAllNodesWithText("Emergency Reserve", substring = true).fetchSemanticsNodes().size)
     }
 
     @Test fun addingThenDeletingEverythingGoesBackToEmptyAndStaysThereAfterARestart() {
