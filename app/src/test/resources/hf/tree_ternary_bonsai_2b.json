@@ -1,0 +1,57 @@
+[
+ {
+  "type": "file",
+  "oid": "e134b65808960d9a271aa6e2e923a43bb07e87bf",
+  "size": 517312992,
+  "lfs": {
+   "oid": "d5f01a4ecaf49239653308ee732ad1a0c5f802c0ddb997549fc7b694c8b45928",
+   "size": 517312992,
+   "pointerSize": 134
+  },
+  "path": "Ternary-Bonsai-2-2B-PQ2_0.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "0db3716c9a1cdbaa18aab47af5aeb47df5ecf710",
+  "size": 429183456,
+  "lfs": {
+   "oid": "36061ad406df8a4903a6db005be350c50fabfaf717f9ef0acf4b76adcd9929fa",
+   "size": 429183456,
+   "pointerSize": 134
+  },
+  "path": "Ternary-Bonsai-2-2B-PTQ1_0.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "c8e0bca94070bf0e3e5f31cadfa498fdda863754",
+  "size": 546689504,
+  "lfs": {
+   "oid": "c2893fa6f951daee8b7263d5f49b455e57989ef56417a22125b03566dc560650",
+   "size": 546689504,
+   "pointerSize": 134
+  },
+  "path": "Ternary-Bonsai-2-2B-Q2_0.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "ccf80a27782dab3856d7fee6d0c9c925191fa4bb",
+  "size": 671372832,
+  "lfs": {
+   "oid": "b48586d703bb776ad6f2e82e018d571e4e7aa12f3c1a9098d93db15f87008f5b",
+   "size": 671372832,
+   "pointerSize": 134
+  },
+  "path": "Ternary-Bonsai-2-2B-mmproj-BF16.gguf"
+ },
+ {
+  "type": "file",
+  "oid": "dcbcf14edfc851c585f3ce255dc09b05221964d3",
+  "size": 364664352,
+  "lfs": {
+   "oid": "ac9934e8d7966d0d62442c202ec8fdad99a045dea79366c1a4a246a46f5c0533",
+   "size": 364664352,
+   "pointerSize": 134
+  },
+  "path": "Ternary-Bonsai-2-2B-mmproj-Q8_0.gguf"
+ }
+]

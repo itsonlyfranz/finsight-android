@@ -1,0 +1,151 @@
+[
+ {
+  "id": "LiquidAI/LFM3-Omni-2B-GGUF",
+  "gated": false,
+  "likes": 151,
+  "downloads": 299362,
+  "gguf": {
+   "total": 1728801600,
+   "architecture": "lfm3",
+   "context_length": 128000,
+   "totalFileSize": 3466628608
+  },
+  "tags": [
+   "gguf",
+   "liquid",
+   "lfm3",
+   "lfm3-omni",
+   "omni",
+   "audio",
+   "vision",
+   "llama.cpp",
+   "any-to-any",
+   "en",
+   "ar",
+   "zh",
+   "fr",
+   "de"
+  ],
+  "pipeline_tag": "any-to-any",
+  "library_name": "gguf"
+ },
+ {
+  "id": "LiquidAI/LFM3-1.7B-GGUF",
+  "gated": false,
+  "likes": 262,
+  "downloads": 266299,
+  "gguf": {
+   "total": 1728801600,
+   "architecture": "lfm3",
+   "context_length": 262144,
+   "totalFileSize": 3466626336
+  },
+  "tags": [
+   "gguf",
+   "liquid",
+   "lfm3",
+   "llama.cpp",
+   "text-generation",
+   "en",
+   "ar",
+   "zh",
+   "fr",
+   "de",
+   "it",
+   "ja",
+   "ko",
+   "pt"
+  ],
+  "pipeline_tag": "text-generation",
+  "library_name": "gguf"
+ },
+ {
+  "id": "AtomicChat/LFM3-1.7B-Uncensored-GGUF",
+  "gated": false,
+  "likes": 289,
+  "downloads": 115410,
+  "gguf": {
+   "total": 1728801600,
+   "architecture": "lfm3",
+   "context_length": 262144,
+   "quantize_imatrix_file": "/work/LFM3-1.7B-Uncensored/ablit-b/imatrix.gguf",
+   "totalFileSize": 1132208000
+  },
+  "tags": [
+   "gguf",
+   "quantized",
+   "lfm3",
+   "text-generation",
+   "en",
+   "zh",
+   "de",
+   "license:other",
+   "endpoints_compatible",
+   "region:us",
+   "imatrix",
+   "conversational"
+  ],
+  "pipeline_tag": "text-generation",
+  "library_name": "gguf"
+ },
+ {
+  "id": "LiquidAI/LFM3-Audio-2B-GGUF",
+  "gated": false,
+  "likes": 40,
+  "downloads": 114101,
+  "gguf": {
+   "total": 1728801600,
+   "architecture": "lfm3",
+   "context_length": 128000,
+   "totalFileSize": 3466624544
+  },
+  "tags": [
+   "gguf",
+   "liquid",
+   "lfm3",
+   "lfm3-audio",
+   "audio",
+   "speech",
+   "llama.cpp",
+   "any-to-any",
+   "en",
+   "ar",
+   "da",
+   "de",
+   "el",
+   "fi"
+  ],
+  "pipeline_tag": "any-to-any",
+  "library_name": "gguf"
+ },
+ {
+  "id": "LiquidAI/LFM3-VL-2B-GGUF",
+  "gated": false,
+  "likes": 70,
+  "downloads": 103226,
+  "gguf": {
+   "total": 1728801600,
+   "architecture": "lfm3",
+   "context_length": 128000,
+   "totalFileSize": 3466626336
+  },
+  "tags": [
+   "gguf",
+   "liquid",
+   "lfm3",
+   "llama.cpp",
+   "image-text-to-text",
+   "en",
+   "ar",
+   "zh",
+   "fr",
+   "de",
+   "it",
+   "ja",
+   "ko",
+   "pt"
+  ],
+  "pipeline_tag": "image-text-to-text",
+  "library_name": "gguf"
+ }
+]

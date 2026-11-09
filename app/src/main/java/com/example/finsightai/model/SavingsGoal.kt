@@ -44,5 +44,7 @@ data class GoalProjection(
     val progressPercentage: Float,
     val monthsToReach: Int,
     val formattedTargetDate: String,
-    val badgeText: String
+    val badgeText: String,
+    /** Short milestone commentary written by a generative backend; null = none. */
+    val aiContext: String? = null
 )

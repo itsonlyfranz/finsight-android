@@ -19,5 +19,7 @@ data class AiInsight(
     val type: InsightType,
     val impactAmount: Double? = null,
     val actionSuggestion: String? = null,
-    val severity: Severity = Severity.LOW
+    val severity: Severity = Severity.LOW,
+    /** Name of the generative backend that wrote [description]/[actionSuggestion]; null = deterministic engine. */
+    val generatedBy: String? = null
 )

@@ -1,13 +1,7 @@
-<?xml version="1.0" encoding="utf-8"?><!--
-   Sample backup rules file; uncomment and customize as necessary.
-   See https://developer.android.com/guide/topics/data/autobackup
-   for details.
-   Note: This file is ignored for devices older than API 31
-   See https://developer.android.com/about/versions/12/backup-restore
--->
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older. Downloaded models are huge and re-downloadable; encrypted secrets are bound to this device's Keystore. -->
 <full-backup-content>
-    <!--
-   <include domain="sharedpref" path="."/>
-   <exclude domain="sharedpref" path="device.xml"/>
--->
+    <exclude domain="file" path="models/" />
+    <exclude domain="sharedpref" path="finsight_secrets.xml" />
+    <exclude domain="sharedpref" path="finsight_models.xml" />
 </full-backup-content>

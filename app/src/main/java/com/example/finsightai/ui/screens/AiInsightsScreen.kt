@@ -41,6 +41,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -79,6 +80,7 @@ fun AiInsightsScreen(
     modifier: Modifier = Modifier
 ) {
     val insights by viewModel.insights.collectAsStateWithLifecycle()
+    val aiStatus by viewModel.aiStatus.collectAsStateWithLifecycle()
     var selectedTab by remember { mutableStateOf(InsightFilterTab.ALL) }
 
     val filteredInsights = remember(insights, selectedTab) {
@@ -125,6 +127,27 @@ fun AiInsightsScreen(
                         text = "Real-time behavioral nudges & wealth accelerators",
                         style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
+                    val writtenBy = insights.firstNotNullOfOrNull { it.generatedBy }
+                    val statusLine = when {
+                        aiStatus.working -> "Rewriting with ${aiStatus.backendLabel}…"
+                        writtenBy != null -> "Written by $writtenBy"
+                        aiStatus.backendLabel != null -> "Using ${aiStatus.backendLabel}"
+                        else -> null
+                    }
+                    if (statusLine != null) {
+                        Text(
+                            text = statusLine,
+                            modifier = Modifier.testTag("ai_status_line"),
+                            style = MaterialTheme.typography.labelSmall.copy(color = BrightEmerald)
+                        )
+                    }
+                    aiStatus.lastError?.let {
+                        Text(
+                            text = "Model unavailable, showing built-in rules: $it",
+                            modifier = Modifier.testTag("ai_error_line"),
+                            style = MaterialTheme.typography.labelSmall.copy(color = TextMuted)
+                        )
+                    }
                 }
             }
         }
@@ -167,7 +190,7 @@ fun AiInsightsScreen(
 
         // Insights List
         LazyColumn(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("insights_list"),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 24.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
@@ -295,11 +318,19 @@ private fun InsightCard(insight: AiInsight) {
             // Description
             Text(
                 text = insight.description,
+                modifier = Modifier.testTag("insight_description_${insight.id}"),
                 style = MaterialTheme.typography.bodyMedium.copy(
                     color = TextSecondary,
                     lineHeight = 22.sp
                 )
             )
+            if (insight.generatedBy != null) {
+                Text(
+                    text = "✨ Written by ${insight.generatedBy}",
+                    modifier = Modifier.testTag("insight_generated_by_${insight.id}"),
+                    style = MaterialTheme.typography.labelSmall.copy(color = BrightEmerald)
+                )
+            }
 
             // Action Suggestion box
             if (!insight.actionSuggestion.isNullOrEmpty()) {

@@ -7,5 +7,7 @@ data class SimulationResult(
     val projectedSavings6M: Double,
     val projectedSavings12M: Double,
     val aiExplanation: String,
-    val goalProjections: List<GoalProjection> = emptyList()
+    val goalProjections: List<GoalProjection> = emptyList(),
+    /** Name of the generative backend that wrote [aiExplanation]; null = deterministic engine. */
+    val generatedBy: String? = null
 )

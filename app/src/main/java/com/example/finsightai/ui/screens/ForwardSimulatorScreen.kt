@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -70,6 +71,7 @@ fun ForwardSimulatorScreen(
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
+            .testTag("simulator_list")
             .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)
@@ -87,13 +89,15 @@ fun ForwardSimulatorScreen(
         // 🎯 Financial Goals Countdown
         if (simulationResult.goalProjections.isNotEmpty()) {
             item {
-                FinancialGoalsCountdownSection(goalProjections = simulationResult.goalProjections)
+                Box(modifier = Modifier.testTag("goals_section")) {
+                    FinancialGoalsCountdownSection(goalProjections = simulationResult.goalProjections)
+                }
             }
         }
 
         // AI Context Explanation Card
         item {
-            AiContextCard(aiExplanation = simulationResult.aiExplanation)
+            AiContextCard(aiExplanation = simulationResult.aiExplanation, generatedBy = simulationResult.generatedBy)
         }
 
         // Interactive Sliders Section
@@ -407,7 +411,7 @@ private fun ProjectionColumnItem(
 }
 
 @Composable
-private fun AiContextCard(aiExplanation: String) {
+private fun AiContextCard(aiExplanation: String, generatedBy: String? = null) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -449,11 +453,19 @@ private fun AiContextCard(aiExplanation: String) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = aiExplanation,
+                    modifier = Modifier.testTag("sim_ai_explanation"),
                     style = MaterialTheme.typography.bodySmall.copy(
                         color = TextPrimary,
                         lineHeight = 20.sp
                     )
                 )
+                if (generatedBy != null) {
+                    Text(
+                        text = "✨ Written by $generatedBy",
+                        modifier = Modifier.testTag("sim_generated_by"),
+                        style = MaterialTheme.typography.labelSmall.copy(color = BrightEmerald)
+                    )
+                }
             }
         }
     }
@@ -607,6 +619,13 @@ private fun SavingsGoalCountdownItem(projection: GoalProjection) {
                             fontWeight = FontWeight.Bold,
                             fontSize = 11.sp
                         )
+                    )
+                }
+                projection.aiContext?.let { context ->
+                    Text(
+                        text = context,
+                        modifier = Modifier.testTag("goal_ai_context_${projection.goal.id}"),
+                        style = MaterialTheme.typography.bodySmall.copy(color = TextSecondary)
                     )
                 }
             }

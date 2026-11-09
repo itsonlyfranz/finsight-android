@@ -1,0 +1,128 @@
+[
+ {
+  "id": "unsloth/gemma-4-E2B-it-GGUF",
+  "gated": false,
+  "likes": 355,
+  "downloads": 621849,
+  "gguf": {
+   "total": 4647450147,
+   "architecture": "gemma4",
+   "context_length": 131072,
+   "totalFileSize": 9311305568
+  },
+  "tags": [
+   "gguf",
+   "gemma4",
+   "unsloth",
+   "gemma",
+   "google",
+   "image-text-to-text",
+   "license:apache-2.0",
+   "endpoints_compatible",
+   "region:us",
+   "conversational"
+  ],
+  "pipeline_tag": "image-text-to-text"
+ },
+ {
+  "id": "unsloth/gemma-4-E2B-it-qat-mobile-GGUF",
+  "gated": false,
+  "likes": 49,
+  "downloads": 420326,
+  "gguf": {
+   "total": 4628569635,
+   "architecture": "gemma4",
+   "context_length": 131072,
+   "totalFileSize": 2186186784
+  },
+  "tags": [
+   "transformers",
+   "gguf",
+   "gemma4",
+   "image-text-to-text",
+   "unsloth",
+   "gemma",
+   "google",
+   "any-to-any",
+   "license:apache-2.0",
+   "endpoints_compatible",
+   "region:us",
+   "conversational"
+  ],
+  "pipeline_tag": "any-to-any",
+  "library_name": "transformers"
+ },
+ {
+  "id": "turintech/gemma-4-E2B-it-Artemis-GGUF",
+  "gated": false,
+  "likes": 13,
+  "downloads": 322210,
+  "gguf": {
+   "total": 4628569635,
+   "architecture": "gemma4",
+   "context_length": 131072,
+   "totalFileSize": 1780060160
+  },
+  "tags": [
+   "gguf",
+   "gemma",
+   "llama.cpp",
+   "vision",
+   "mtp",
+   "image-text-to-text",
+   "license:apache-2.0",
+   "model-index",
+   "endpoints_compatible",
+   "region:us",
+   "conversational"
+  ],
+  "pipeline_tag": "image-text-to-text",
+  "library_name": "gguf"
+ },
+ {
+  "id": "ggml-org/gemma-4-E2B-it-GGUF",
+  "gated": false,
+  "likes": 96,
+  "downloads": 226083,
+  "gguf": {
+   "total": 4647450147,
+   "architecture": "gemma4",
+   "context_length": 131072,
+   "totalFileSize": 9311299520
+  },
+  "tags": [
+   "gguf",
+   "quantized",
+   "any-to-any",
+   "license:apache-2.0",
+   "endpoints_compatible",
+   "region:us",
+   "conversational"
+  ],
+  "pipeline_tag": "any-to-any"
+ },
+ {
+  "id": "google/gemma-4-E2B-it-qat-q4_0-gguf",
+  "gated": false,
+  "likes": 165,
+  "downloads": 179319,
+  "gguf": {
+   "total": 4628569635,
+   "architecture": "gemma4",
+   "context_length": 131072,
+   "totalFileSize": 3349516256
+  },
+  "tags": [
+   "transformers",
+   "gguf",
+   "any-to-any",
+   "arxiv:2607.02770",
+   "license:apache-2.0",
+   "endpoints_compatible",
+   "region:us",
+   "conversational"
+  ],
+  "pipeline_tag": "any-to-any",
+  "library_name": "transformers"
+ }
+]

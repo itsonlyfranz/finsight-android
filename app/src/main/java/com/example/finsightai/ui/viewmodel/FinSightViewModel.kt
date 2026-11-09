@@ -4,6 +4,12 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.finsightai.ai.AiEnhancer
+import com.example.finsightai.ai.GeneratedText
+import com.example.finsightai.ai.InsightRewrite
+import com.example.finsightai.ai.NoGenerativeSource
+import com.example.finsightai.ai.backend.AiBackendRouter
+import com.example.finsightai.ai.backend.EffectiveBackend
 import com.example.finsightai.data.DefaultFinSightRepository
 import com.example.finsightai.data.FinSightRepository
 import com.example.finsightai.model.AiInsight
@@ -11,7 +17,17 @@ import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
 import com.example.finsightai.theme.AppTheme
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,13 +36,62 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import java.time.LocalDate
 
+/** Progress of the optional generative layer on top of the deterministic engines, for the UI. */
+data class AiFeatureStatus(
+    /** True while a model is (re)writing insight / simulator text. */
+    val working: Boolean = false,
+    /** Label of the backend writing text now, or null when the deterministic engines are in use. */
+    val backendLabel: String? = null,
+    /** Why the deterministic engines are being used (no model installed, not signed in). */
+    val deterministicReason: String? = null,
+    /** Last backend failure, if generation fell back to deterministic text. */
+    val lastError: String? = null,
+)
+
 class FinSightViewModel(
-    private val repository: FinSightRepository = DefaultFinSightRepository()
+    private val repository: FinSightRepository = DefaultFinSightRepository(),
+    /** Routes to the user's chosen backend; null = deterministic engines only. */
+    private val aiRouter: AiBackendRouter? = null,
+    /** Emits whenever the backend selection or its readiness changes (model installed/selected, sign-in). */
+    private val aiSignal: Flow<Any?> = emptyFlow()
 ) : ViewModel() {
+
+    private val enhancer = AiEnhancer(aiRouter ?: NoGenerativeSource)
+
+    private data class CachedRewrite(val signature: String, val rewrite: InsightRewrite)
+    private data class CachedNarration(
+        val signature: String,
+        val explanation: GeneratedText?,
+        val goalContext: Map<String, String>,
+    )
+
+    private val insightRewrites = MutableStateFlow<Map<String, CachedRewrite>>(emptyMap())
+    private val simulationNarration = MutableStateFlow<CachedNarration?>(null)
+    private val _aiStatus = MutableStateFlow(AiFeatureStatus())
+    val aiStatus: StateFlow<AiFeatureStatus> = _aiStatus.asStateFlow()
 
     val transactions: StateFlow<List<Transaction>> = repository.transactions
     val categories: StateFlow<List<TransactionCategory>> = repository.categories
-    val insights: StateFlow<List<AiInsight>> = repository.insights
+
+    /** Deterministic insights, with the model's wording layered on top when a backend produced it. */
+    val insights: StateFlow<List<AiInsight>> = combine(repository.insights, insightRewrites) { base, rewrites ->
+        base.map { insight ->
+            val cached = rewrites[insight.id]
+            if (cached != null && cached.signature == signatureOf(insight)) {
+                insight.copy(
+                    description = cached.rewrite.description,
+                    actionSuggestion = cached.rewrite.actionSuggestion ?: insight.actionSuggestion,
+                    generatedBy = cached.rewrite.by
+                )
+            } else {
+                insight
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = repository.insights.value
+    )
     val monthlyIncome: StateFlow<Double> = repository.monthlyIncome
     val appTheme: StateFlow<AppTheme> = repository.currentTheme
 
@@ -81,7 +146,7 @@ class FinSightViewModel(
         initialValue = transactions.value
     )
 
-    val simulationResult: StateFlow<SimulationResult> = combine(
+    private val deterministicSimulation: StateFlow<SimulationResult> = combine(
         categoryBreakdown,
         sliderReductions
     ) { _, reductions ->
@@ -91,6 +156,111 @@ class FinSightViewModel(
         started = SharingStarted.Eagerly,
         initialValue = repository.simulateSavings(sliderReductions.value)
     )
+
+    /** The simulator's numbers always come from the deterministic engine; only the wording can be model-written. */
+    val simulationResult: StateFlow<SimulationResult> = combine(
+        deterministicSimulation,
+        simulationNarration
+    ) { base, narration ->
+        if (narration == null || narration.signature != signatureOf(base)) {
+            base
+        } else {
+            base.copy(
+                aiExplanation = narration.explanation?.text ?: base.aiExplanation,
+                generatedBy = narration.explanation?.by,
+                goalProjections = base.goalProjections.map { projection ->
+                    projection.copy(aiContext = narration.goalContext[projection.goal.id])
+                }
+            )
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = deterministicSimulation.value
+    )
+
+    init {
+        if (aiRouter != null) startAiEnhancement(aiRouter)
+    }
+
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
+    private fun startAiEnhancement(router: AiBackendRouter) {
+        viewModelScope.launch {
+            // Restart everything whenever the backend choice or its readiness changes.
+            aiSignal.onStart { emit(Unit) }.distinctUntilChanged().collectLatest {
+                insightRewrites.value = emptyMap()
+                simulationNarration.value = null
+                refreshStatus(router, working = false)
+                val effective = router.effective()
+                if (effective !is EffectiveBackend.Generative) return@collectLatest
+
+                launch {
+                    repository.insights.collectLatest { base -> rewriteInsights(router, base) }
+                }
+                launch {
+                    deterministicSimulation.debounce(SIMULATION_DEBOUNCE_MS).collectLatest { base ->
+                        narrateSimulation(router, base)
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun rewriteInsights(router: AiBackendRouter, base: List<AiInsight>) {
+        refreshStatus(router, working = true)
+        try {
+            val income = repository.monthlyIncome.value
+            for (insight in base) {
+                val signature = signatureOf(insight)
+                if (insightRewrites.value[insight.id]?.signature == signature) continue
+                val rewrite = enhancer.rewriteInsight(insight, income) ?: continue
+                insightRewrites.value = insightRewrites.value + (insight.id to CachedRewrite(signature, rewrite))
+            }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } finally {
+            refreshStatus(router, working = false)
+        }
+    }
+
+    private suspend fun narrateSimulation(router: AiBackendRouter, base: SimulationResult) {
+        val signature = signatureOf(base)
+        if (simulationNarration.value?.signature == signature) return
+        refreshStatus(router, working = true)
+        try {
+            val explanation = enhancer.explainSimulation(base)
+            val goalContext = mutableMapOf<String, String>()
+            if (explanation != null) {
+                simulationNarration.value = CachedNarration(signature, explanation, emptyMap())
+            }
+            for (projection in base.goalProjections) {
+                val context = enhancer.goalMilestoneContext(projection, base.monthlySavings) ?: continue
+                goalContext[projection.goal.id] = context.text
+                simulationNarration.value = CachedNarration(signature, explanation, goalContext.toMap())
+            }
+        } catch (cancel: CancellationException) {
+            throw cancel
+        } finally {
+            refreshStatus(router, working = false)
+        }
+    }
+
+    private suspend fun refreshStatus(router: AiBackendRouter, working: Boolean) {
+        val effective = router.effective()
+        _aiStatus.value = AiFeatureStatus(
+            working = working && effective is EffectiveBackend.Generative,
+            backendLabel = (effective as? EffectiveBackend.Generative)?.label,
+            deterministicReason = (effective as? EffectiveBackend.Deterministic)?.reason,
+            lastError = router.lastError.value
+        )
+    }
+
+    private fun signatureOf(insight: AiInsight): String =
+        "${insight.title}|${insight.description}|${insight.actionSuggestion}|${insight.impactAmount}"
+
+    private fun signatureOf(result: SimulationResult): String =
+        "${result.targetReductions.toSortedMap(compareBy { it.name })}|${result.monthlySavings}|" +
+            result.goalProjections.joinToString(",") { "${it.goal.id}:${it.monthsToReach}" }
 
     fun addTransaction(
         title: String,
@@ -129,11 +299,14 @@ class FinSightViewModel(
     }
 
     companion object {
+        private const val SIMULATION_DEBOUNCE_MS = 700L
+
         fun factory(context: Context): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 val repository = DefaultFinSightRepository(context.applicationContext)
-                return FinSightViewModel(repository) as T
+                val ai = com.example.finsightai.AiServices.get(context)
+                return FinSightViewModel(repository, ai.router, ai.signal) as T
             }
         }
     }
