@@ -32,9 +32,14 @@ object CsvExporter {
 
     private const val EXPORT_DIR = "exports"
 
-    /** Removes the temporary CSV copies made for sharing, so deleted transactions do not linger in the cache. */
-    fun clearCachedExports(context: Context) {
-        File(context.cacheDir, EXPORT_DIR).deleteRecursively()
+    /** Exports younger than this are kept, so a share that is still being read is never cut off. */
+    const val EXPORT_MAX_AGE_MS = 10 * 60 * 1000L
+
+    /** Removes temporary CSV copies older than [EXPORT_MAX_AGE_MS]; run at app start. */
+    fun clearStaleExports(context: Context, now: Long = System.currentTimeMillis()) {
+        File(context.cacheDir, EXPORT_DIR).listFiles()?.forEach {
+            if (now - it.lastModified() > EXPORT_MAX_AGE_MS) it.delete()
+        }
     }
 
     fun exportAndShareCsv(context: Context, transactions: List<Transaction>) {

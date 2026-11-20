@@ -272,7 +272,7 @@ class DataControlsE2ETest {
         rule.waitForTag("tx_empty")
     }
 
-    @Test fun deleteAllTransactionsCanExportFirstAndRemovesTheCachedCopy() {
+    @Test fun deleteAllTransactionsCanExportFirstAndTheExportSurvivesTheDelete() {
         launchApp()
         openSettings()
         tapOnSettings("settings_delete_transactions")
@@ -285,7 +285,16 @@ class DataControlsE2ETest {
         confirm()
         rule.waitForTag("settings_data_status")
         assertEquals(emptyList<Any>(), db { it.getAllTransactions() })
-        assertTrue("the temporary CSV copy is removed with the data", exportedFiles().isEmpty())
+        assertEquals("the export outlives the delete", 1, exportedFiles().size)
+        assertTrue("and is still readable", exportedFiles().single().readText().lines().size > 2)
+
+        val old = File(app.context.cacheDir, "exports/old.csv").apply {
+            writeText("old")
+            setLastModified(System.currentTimeMillis() - 11 * 60 * 1000L)
+        }
+        restart()
+        rule.waitUntil(10_000) { !old.exists() }
+        assertEquals("only the fresh export is kept", 1, exportedFiles().size)
     }
 
     // ---- Delete all savings goals ----
@@ -369,7 +378,8 @@ class DataControlsE2ETest {
             assertEquals("the theme is kept", AppTheme.CYBER_SLATE.name, db.getSetting("app_theme", ""))
         }
         assertAiSettingsKept()
-        assertTrue("the temporary CSV copy is removed with the data", exportedFiles().isEmpty())
+        assertEquals("the export made before deleting survives", 1, exportedFiles().size)
+        assertTrue(exportedFiles().single().readText().lines().size > 2)
 
         // A restart still shows the intro, and skipping it lands on an empty dashboard (no sample data).
         restart()
