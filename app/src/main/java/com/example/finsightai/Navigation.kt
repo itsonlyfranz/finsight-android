@@ -21,6 +21,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -75,7 +76,13 @@ fun MainNavigation(
 
     // First launch only: the intro replaces the whole app until it is finished or skipped, then the
     // user lands on the (empty) dashboard.
+    // The intro also returns after "Delete all data" / "Reset everything": whichever screen was open
+    // (Settings, a tab) must not be what the user lands on once the intro is finished.
     if (!onboardingCompleted) {
+        LaunchedEffect(Unit) {
+            showSettings = false
+            selectedTab = FinSightTab.DASHBOARD
+        }
         OnboardingScreen(viewModel = viewModel)
         return
     }

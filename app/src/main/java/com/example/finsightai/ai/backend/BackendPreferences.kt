@@ -18,6 +18,12 @@ class BackendPreferences(private val prefs: SharedPreferences?) {
         prefs?.edit()?.putString(KEY, choice.name)?.apply()
     }
 
+    /** Forgets the choice, so the default backend applies again. */
+    fun reset() {
+        _choice.value = BackendChoice.ON_DEVICE
+        prefs?.edit()?.remove(KEY)?.apply()
+    }
+
     private fun read(): BackendChoice =
         prefs?.getString(KEY, null)
             ?.let { name -> BackendChoice.entries.firstOrNull { it.name == name } }

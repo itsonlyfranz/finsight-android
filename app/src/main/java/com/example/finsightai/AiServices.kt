@@ -81,6 +81,19 @@ class AiServices(
         codexAuth.restore()
     }
 
+    /**
+     * Factory-resets the AI settings: Codex sign-in and its model choice, the Hugging Face token, the
+     * active on-device model and the backend selection. Downloaded model files stay on disk (they are
+     * not settings; AI Setup can delete them).
+     */
+    suspend fun resetSettings() {
+        codexAuth.signOut()
+        codex.forget()
+        hfTokens.clear()
+        modelStore.setActive(null)
+        backendPrefs.reset()
+    }
+
     companion object {
         @Volatile private var instance: AiServices? = null
 

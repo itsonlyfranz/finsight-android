@@ -30,10 +30,22 @@ object CsvExporter {
         return builder.toString()
     }
 
+    private const val EXPORT_DIR = "exports"
+
+    /** Exports younger than this are kept, so a share that is still being read is never cut off. */
+    const val EXPORT_MAX_AGE_MS = 10 * 60 * 1000L
+
+    /** Removes temporary CSV copies older than [EXPORT_MAX_AGE_MS]; run at app start. */
+    fun clearStaleExports(context: Context, now: Long = System.currentTimeMillis()) {
+        File(context.cacheDir, EXPORT_DIR).listFiles()?.forEach {
+            if (now - it.lastModified() > EXPORT_MAX_AGE_MS) it.delete()
+        }
+    }
+
     fun exportAndShareCsv(context: Context, transactions: List<Transaction>) {
         try {
             val csvContent = generateCsvContent(transactions)
-            val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+            val exportDir = File(context.cacheDir, EXPORT_DIR).apply { mkdirs() }
             val csvFile = File(exportDir, "finsight_transactions_${System.currentTimeMillis()}.csv")
 
             FileWriter(csvFile).use { writer ->
