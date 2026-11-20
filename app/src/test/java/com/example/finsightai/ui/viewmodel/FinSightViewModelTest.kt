@@ -355,3 +355,89 @@ class FinSightViewModelTest {
         assertTrue(viewModel.goals.value.isEmpty())
     }
 }
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class FinSightViewModelDataDeletionTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var repository: DefaultFinSightRepository
+    private var aiResets = 0
+    private var exportCleanups = 0
+    private lateinit var viewModel: FinSightViewModel
+
+    @Before
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        repository = SampleData.repository().apply {
+            addGoal(SavingsGoal("g1", "Trip", 10_000.0, 0.0, "🎯", ""))
+            updateUserName("Juan")
+            updateMonthlyIncome(61_000.0)
+            completeOnboarding()
+        }
+        viewModel = FinSightViewModel(
+            repository,
+            resetAiSettings = { aiResets++ },
+            clearExportedCopies = { exportCleanups++ }
+        )
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    @Test
+    fun deleteAllTransactions_clearsThemAndTheCachedExportsButNotTheAiSettings() = runTest(testDispatcher) {
+        viewModel.filterCategory(TransactionCategory.GROCERIES)
+
+        viewModel.deleteAllTransactions()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.transactions.value.isEmpty())
+        assertEquals(1, exportCleanups)
+        assertEquals(0, aiResets)
+        assertEquals(1, viewModel.goals.value.size)
+        assertEquals("Juan", viewModel.userName.value)
+        assertEquals(null, viewModel.selectedCategoryFilter.value)
+    }
+
+    @Test
+    fun deleteAllGoals_keepsTransactions() = runTest(testDispatcher) {
+        val count = viewModel.transactions.value.size
+
+        viewModel.deleteAllGoals()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.goals.value.isEmpty())
+        assertEquals(count, viewModel.transactions.value.size)
+        assertEquals(0, exportCleanups)
+    }
+
+    @Test
+    fun deleteAllData_returnsToTheIntroAndKeepsTheAiSettings() = runTest(testDispatcher) {
+        viewModel.deleteAllData()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.transactions.value.isEmpty())
+        assertTrue(viewModel.goals.value.isEmpty())
+        assertEquals("", viewModel.userName.value)
+        assertEquals(45_000.0, viewModel.monthlyIncome.value, 0.0)
+        assertFalse(viewModel.onboardingCompleted.value)
+        assertEquals(0, aiResets)
+        assertEquals(1, exportCleanups)
+    }
+
+    @Test
+    fun resetEverything_alsoClearsTheAiSettingsAndTheTheme() = runTest(testDispatcher) {
+        viewModel.setAppTheme(com.example.finsightai.theme.AppTheme.MIDNIGHT_BLUE)
+
+        viewModel.resetEverything()
+        advanceUntilIdle()
+
+        assertEquals(1, aiResets)
+        assertEquals(com.example.finsightai.theme.AppTheme.DECK_EMERALD, viewModel.appTheme.value)
+        assertTrue(viewModel.transactions.value.isEmpty())
+        assertFalse(viewModel.onboardingCompleted.value)
+        assertEquals(1, exportCleanups)
+    }
+}

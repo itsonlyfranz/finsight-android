@@ -21,6 +21,7 @@ SharedPreferences, Keystore secrets, real `HttpHfApi` / `HttpModelDownloader`) i
 | Savings goals | unit only | Preset goals removed after this pass: `DashboardSimulatorE2ETest` and `EmptyStateE2ETest` check the empty goals state; goal add/edit/delete stored in SQLite added later (`GoalsE2ETest`); goal timelines are unit-tested (`ForwardSimulatorEngineTest`) |
 | Themes | none | `ThemesPersistenceE2ETest`: every theme, painted background, saved, all tabs |
 | Settings (theme, backend, HF token, Codex model) | partly (`AiSetupE2ETest`, in memory) | `SettingsPersistenceE2ETest` + `ProcessRestartE2ETest` on real storage |
+| Data controls (Settings): export CSV, delete transactions / goals / all data, reset everything | none | `DataControlsE2ETest` (v1.2.0): each confirmation (cancel keeps data), the shared CSV, DB contents and an in-app restart after every path, intro returns, theme and AI kept by Delete all data and cleared by Reset everything, no sample data ever returns |
 | Persistence: activity recreation | none | `ThemesPersistenceE2ETest`, `SettingsPersistenceE2ETest` |
 | Persistence: restart | none | in-app restart (new object graph, same disk) in the above; real process death via `scripts/e2e-process-restart.sh` |
 | Peso display | unit (`MoneyTest`) | no `$` on any screen (`DashboardSimulatorE2ETest`) |

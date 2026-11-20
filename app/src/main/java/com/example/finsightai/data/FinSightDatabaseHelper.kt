@@ -50,6 +50,7 @@ class FinSightDatabaseHelper(
         const val SETTING_MONTHLY_INCOME = "monthly_income"
         const val SETTING_USER_NAME = "user_name"
         const val SETTING_ONBOARDING_COMPLETED = "onboarding_completed"
+        const val SETTING_APP_THEME = "app_theme"
 
         private const val CREATE_GOALS_TABLE = """
             CREATE TABLE IF NOT EXISTS $TABLE_GOALS (
@@ -121,21 +122,12 @@ class FinSightDatabaseHelper(
     private fun seedDefaults(db: SQLiteDatabase) {
         db.beginTransaction()
         try {
-            // Default budgets
-            for (category in TransactionCategory.values()) {
-                if (category != TransactionCategory.SALARY) {
-                    val cv = ContentValues().apply {
-                        put(COL_BUDGET_CATEGORY, category.name)
-                        put(COL_BUDGET_AMOUNT, category.defaultMonthlyBudget)
-                    }
-                    db.insertWithOnConflict(TABLE_BUDGETS, null, cv, SQLiteDatabase.CONFLICT_REPLACE)
-                }
-            }
+            seedDefaultBudgets(db)
 
             // Default settings
             val defaultSettings = mapOf(
                 SETTING_MONTHLY_INCOME to DEFAULT_MONTHLY_INCOME.toString(),
-                "app_theme" to "DECK_EMERALD"
+                SETTING_APP_THEME to "DECK_EMERALD"
             )
             for ((key, value) in defaultSettings) {
                 val cv = ContentValues().apply {
@@ -148,6 +140,72 @@ class FinSightDatabaseHelper(
             db.setTransactionSuccessful()
         } finally {
             db.endTransaction()
+        }
+    }
+
+    private fun seedDefaultBudgets(db: SQLiteDatabase) {
+        for (category in TransactionCategory.values()) {
+            if (category != TransactionCategory.SALARY) {
+                val cv = ContentValues().apply {
+                    put(COL_BUDGET_CATEGORY, category.name)
+                    put(COL_BUDGET_AMOUNT, category.defaultMonthlyBudget)
+                }
+                db.insertWithOnConflict(TABLE_BUDGETS, null, cv, SQLiteDatabase.CONFLICT_REPLACE)
+            }
+        }
+    }
+
+    /**
+     * Empties the user's data in one SQLite transaction (all of it or none of it): transactions, savings
+     * goals, per-category budgets (back to the neutral defaults, as on a new install), the saved name and
+     * the monthly income (back to the default). The intro is marked as not completed so the app shows it
+     * again, and [resetTheme] also puts the theme back to the default. Nothing is ever re-seeded with
+     * sample data: [seedDefaults] only writes budget targets and settings.
+     */
+    fun deleteAllData(resetTheme: Boolean) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete(TABLE_TRANSACTIONS, null, null)
+            db.delete(TABLE_GOALS, null, null)
+            db.delete(TABLE_BUDGETS, null, null)
+            db.delete(TABLE_SETTINGS, "$COL_SETTING_KEY = ?", arrayOf(SETTING_MONTHLY_INCOME))
+            db.delete(TABLE_SETTINGS, "$COL_SETTING_KEY = ?", arrayOf(SETTING_USER_NAME))
+            if (resetTheme) db.delete(TABLE_SETTINGS, "$COL_SETTING_KEY = ?", arrayOf(SETTING_APP_THEME))
+            db.delete(TABLE_SETTINGS, "$COL_SETTING_KEY = ?", arrayOf(SETTING_ONBOARDING_COMPLETED))
+            seedDefaultBudgets(db)
+            // Explicit "not done" (rather than no row): a database with no transactions must show the intro.
+            val cv = ContentValues().apply {
+                put(COL_SETTING_KEY, SETTING_ONBOARDING_COMPLETED)
+                put(COL_SETTING_VALUE, "false")
+            }
+            db.insertWithOnConflict(TABLE_SETTINGS, null, cv, SQLiteDatabase.CONFLICT_REPLACE)
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+        compactStorage(db)
+    }
+
+    /** Deletes every transaction and nothing else. */
+    fun deleteAllTransactions() {
+        val db = writableDatabase
+        db.delete(TABLE_TRANSACTIONS, null, null)
+        compactStorage(db)
+    }
+
+    /** Deletes every savings goal and nothing else. */
+    fun deleteAllGoals() {
+        val db = writableDatabase
+        db.delete(TABLE_GOALS, null, null)
+        compactStorage(db)
+    }
+
+    /** Best effort: rewrites the file so the deleted rows do not linger in free pages. */
+    private fun compactStorage(db: SQLiteDatabase) {
+        try {
+            db.execSQL("VACUUM")
+        } catch (_: Exception) {
         }
     }
 
