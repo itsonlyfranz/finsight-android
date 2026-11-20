@@ -66,7 +66,7 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
   - **Delete all transactions** and **Delete all savings goals** remove just that data and leave everything else (name, income, budgets, the other list, theme, AI settings) as it was.
   - **Delete all data** clears transactions, budgets, savings goals, your name and your monthly income, then shows the first-launch intro again as on a fresh install. Your theme and AI settings (model choice, Codex and Hugging Face sign-in) are kept.
   - **Reset everything** does the same and also clears the theme and the AI settings (backend and model choice, Codex sign-in, Hugging Face token). Downloaded model files stay on the phone; delete them in AI Setup.
-  - Deleting never brings sample data back: a new or emptied database holds only neutral defaults (per-category budget targets and the default income), and temporary CSV copies made for sharing are removed with the data.
+  - Deleting never brings sample data back: a new or emptied database holds only neutral defaults (per-category budget targets and the default income), and temporary CSV copies made for sharing are kept for 10 minutes (so an "Export first" share survives the delete) and cleaned up on a later app start.
 
 ### 2. CSV Data Export & Sharing (From Impact-Effort Matrix)
 - Export transactions into RFC 4180-compliant CSV format with a single tap.

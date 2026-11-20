@@ -362,7 +362,6 @@ class FinSightViewModelDataDeletionTest {
     private val testDispatcher = StandardTestDispatcher()
     private lateinit var repository: DefaultFinSightRepository
     private var aiResets = 0
-    private var exportCleanups = 0
     private lateinit var viewModel: FinSightViewModel
 
     @Before
@@ -376,8 +375,7 @@ class FinSightViewModelDataDeletionTest {
         }
         viewModel = FinSightViewModel(
             repository,
-            resetAiSettings = { aiResets++ },
-            clearExportedCopies = { exportCleanups++ }
+            resetAiSettings = { aiResets++ }
         )
     }
 
@@ -387,14 +385,13 @@ class FinSightViewModelDataDeletionTest {
     }
 
     @Test
-    fun deleteAllTransactions_clearsThemAndTheCachedExportsButNotTheAiSettings() = runTest(testDispatcher) {
+    fun deleteAllTransactions_clearsThemButNotTheAiSettings() = runTest(testDispatcher) {
         viewModel.filterCategory(TransactionCategory.GROCERIES)
 
         viewModel.deleteAllTransactions()
         advanceUntilIdle()
 
         assertTrue(viewModel.transactions.value.isEmpty())
-        assertEquals(1, exportCleanups)
         assertEquals(0, aiResets)
         assertEquals(1, viewModel.goals.value.size)
         assertEquals("Juan", viewModel.userName.value)
@@ -410,7 +407,6 @@ class FinSightViewModelDataDeletionTest {
 
         assertTrue(viewModel.goals.value.isEmpty())
         assertEquals(count, viewModel.transactions.value.size)
-        assertEquals(0, exportCleanups)
     }
 
     @Test
@@ -424,7 +420,6 @@ class FinSightViewModelDataDeletionTest {
         assertEquals(45_000.0, viewModel.monthlyIncome.value, 0.0)
         assertFalse(viewModel.onboardingCompleted.value)
         assertEquals(0, aiResets)
-        assertEquals(1, exportCleanups)
     }
 
     @Test
@@ -438,6 +433,5 @@ class FinSightViewModelDataDeletionTest {
         assertEquals(com.example.finsightai.theme.AppTheme.DECK_EMERALD, viewModel.appTheme.value)
         assertTrue(viewModel.transactions.value.isEmpty())
         assertFalse(viewModel.onboardingCompleted.value)
-        assertEquals(1, exportCleanups)
     }
 }

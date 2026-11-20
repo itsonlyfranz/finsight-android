@@ -60,9 +60,7 @@ class FinSightViewModel(
     /** Emits whenever the backend selection or its readiness changes (model installed/selected, sign-in). */
     private val aiSignal: Flow<Any?> = emptyFlow(),
     /** Clears the AI settings (sign-ins, model and backend choice); used by [resetEverything]. */
-    private val resetAiSettings: suspend () -> Unit = {},
-    /** Removes temporary copies of exported transactions; used whenever transactions are deleted. */
-    private val clearExportedCopies: () -> Unit = {}
+    private val resetAiSettings: suspend () -> Unit = {}
 ) : ViewModel() {
 
     private val enhancer = AiEnhancer(aiRouter ?: NoGenerativeSource)
@@ -409,10 +407,9 @@ class FinSightViewModel(
         )
     }
 
-    /** Deletes every transaction (and any cached CSV export of them); everything else is kept. */
+    /** Deletes every transaction; everything else is kept. */
     fun deleteAllTransactions() {
         repository.deleteAllTransactions()
-        clearExportedCopies()
         _selectedCategoryFilter.value = null
     }
 
@@ -442,7 +439,6 @@ class FinSightViewModel(
 
     private fun wipeLocalData(resetTheme: Boolean) {
         repository.deleteAllData(resetTheme)
-        clearExportedCopies()
         _selectedCategoryFilter.value = null
         sliderReductions.value = DEFAULT_SLIDER_REDUCTIONS
     }
@@ -491,12 +487,12 @@ class FinSightViewModel(
         fun factory(context: Context): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                CsvExporter.clearStaleExports(context.applicationContext)
                 val repository = DefaultFinSightRepository(context.applicationContext)
                 val ai = com.example.finsightai.AiServices.get(context)
                 return FinSightViewModel(
                     repository, ai.router, ai.signal,
-                    resetAiSettings = ai::resetSettings,
-                    clearExportedCopies = { CsvExporter.clearCachedExports(context.applicationContext) }
+                    resetAiSettings = ai::resetSettings
                 ) as T
             }
         }
