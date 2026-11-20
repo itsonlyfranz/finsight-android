@@ -30,10 +30,17 @@ object CsvExporter {
         return builder.toString()
     }
 
+    private const val EXPORT_DIR = "exports"
+
+    /** Removes the temporary CSV copies made for sharing, so deleted transactions do not linger in the cache. */
+    fun clearCachedExports(context: Context) {
+        File(context.cacheDir, EXPORT_DIR).deleteRecursively()
+    }
+
     fun exportAndShareCsv(context: Context, transactions: List<Transaction>) {
         try {
             val csvContent = generateCsvContent(transactions)
-            val exportDir = File(context.cacheDir, "exports").apply { mkdirs() }
+            val exportDir = File(context.cacheDir, EXPORT_DIR).apply { mkdirs() }
             val csvFile = File(exportDir, "finsight_transactions_${System.currentTimeMillis()}.csv")
 
             FileWriter(csvFile).use { writer ->

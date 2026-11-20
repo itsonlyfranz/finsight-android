@@ -55,6 +55,8 @@ class AppFixture(
     private val modelsDir = File(context.filesDir, "e2e-models-$ns")
     private val prefNames = listOf("models", "codex", "backend", "secrets").map { "e2e_${it}_$ns" }
     val secretsPrefsName: String get() = prefNames[3]
+    val codexPrefsName: String get() = prefNames[1]
+    val modelPrefsName: String get() = prefNames[0]
     private val keyAlias = "finsight_e2e_key_$ns"
 
     /** The current graph's fakes; replaced by [newServices]. */
