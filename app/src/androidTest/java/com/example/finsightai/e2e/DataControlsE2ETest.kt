@@ -67,6 +67,8 @@ class DataControlsE2ETest {
     private val spec = CuratedModels.lfm3.copy(sizeBytes = 2048)
 
     @Before fun setUp() {
+        // Fresh exports from earlier tests (kept for 10 minutes by design) must not leak into this one.
+        File(app.context.cacheDir, "exports").deleteRecursively()
         // The system share sheet never opens: the monitor answers it and keeps the intent the app tried to start.
         InstrumentationRegistry.getInstrumentation().addMonitor(shareMonitor)
         db {
