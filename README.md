@@ -56,12 +56,17 @@ FinSight AI is a native Android application built with **Jetpack Compose**, **Ma
 ## 🏗️ Architecture & Features
 
 ### 1. On-Device SQLite Persistence
-- Powered by `FinSightDatabaseHelper` managing `transactions`, `budgets`, `savings_goals`, and `settings` tables. Database upgrades only ever add (version 2 adds the goals table); no upgrade drops or rewrites existing rows.
+- Powered by `FinSightDatabaseHelper` managing `transactions`, `budgets`, `savings_goals`, and `settings` tables. Database upgrades only ever add (version 2 adds the goals table); no upgrade drops or rewrites existing rows. The Delete-all controls only ever delete rows (in a single SQLite transaction, so a wipe is all-or-nothing); AI settings live outside this database (private preferences plus the Android Keystore-encrypted token store) and are only cleared by Reset everything.
 - All changes persist permanently on device across app restarts.
 - A new install starts empty: no demo transactions are added, every screen shows an empty state that says what to do next, and deleting everything never brings sample data back. Existing installs keep their saved data untouched. Amounts are in Philippine pesos (₱). Upgrading from v1.0.0 requires an uninstall, which deletes saved data.
 - Tap a transaction to edit its amount, category, date and note; the trash icon deletes it.
 - **First-launch intro**: a skippable four-step setup (welcome and optional name, how logging turns into insights, optional AI, then your monthly income and an optional first savings goal) is shown once on a fresh install, then lands on the empty dashboard with an "Add your first expense" action. Installs that already have transactions skip it. Skipping keeps the default income of ₱45,000.
-- **Settings** (the gear on the dashboard): change your name (the dashboard greets you with it, or says "Welcome back" without one) and your monthly income at any time.
+- **Settings** (the gear on the dashboard): change your name (the dashboard greets you with it, or says "Welcome back" without one) and your monthly income at any time. The same screen holds the controls for your data, each behind its own confirmation dialog:
+  - **Export transactions (CSV)** saves a copy of all your transactions through the Android share sheet (Save to Files / Drive, send by email, ...). Delete-all and delete-transactions offer it too as **Export first**.
+  - **Delete all transactions** and **Delete all savings goals** remove just that data and leave everything else (name, income, budgets, the other list, theme, AI settings) as it was.
+  - **Delete all data** clears transactions, budgets, savings goals, your name and your monthly income, then shows the first-launch intro again as on a fresh install. Your theme and AI settings (model choice, Codex and Hugging Face sign-in) are kept.
+  - **Reset everything** does the same and also clears the theme and the AI settings (backend and model choice, Codex sign-in, Hugging Face token). Downloaded model files stay on the phone; delete them in AI Setup.
+  - Deleting never brings sample data back: a new or emptied database holds only neutral defaults (per-category budget targets and the default income), and temporary CSV copies made for sharing are kept for 10 minutes (so an "Export first" share survives the delete) and cleaned up on a later app start.
 
 ### 2. CSV Data Export & Sharing (From Impact-Effort Matrix)
 - Export transactions into RFC 4180-compliant CSV format with a single tap.
@@ -98,11 +103,12 @@ All unit tests run via Gradle test runner:
 ```bash
 ./gradlew testDebugUnitTest
 ```
-- **190 JVM unit tests** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original core suites are:
+- **199 JVM unit tests** (0 failures, 0 errors), including model catalog / Hugging Face search filter / resumable downloader / Codex auth / backend router / AI-binding suites. The original core suites are:
   - `AiInsightsEngineTest`: 7 tests
   - `ForwardSimulatorEngineTest`: 9 tests
   - `FinSightRepositoryTest`: 15 tests
-  - `FinSightViewModelTest`: 19 tests
+  - `FinSightViewModelTest`: 19 tests (plus 4 for the data-deletion controls)
+  - `DataDeletionTest`: 5 tests
   - `CsvExporterTest`: 2 tests
   - `MainScreenViewModelTest`: 2 tests
 

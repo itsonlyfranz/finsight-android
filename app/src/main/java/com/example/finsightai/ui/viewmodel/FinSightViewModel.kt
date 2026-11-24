@@ -19,6 +19,7 @@ import com.example.finsightai.model.SimulationResult
 import com.example.finsightai.model.Transaction
 import com.example.finsightai.model.TransactionCategory
 import com.example.finsightai.theme.AppTheme
+import com.example.finsightai.util.CsvExporter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -57,7 +58,9 @@ class FinSightViewModel(
     /** Routes to the user's chosen backend; null = deterministic engines only. */
     private val aiRouter: AiBackendRouter? = null,
     /** Emits whenever the backend selection or its readiness changes (model installed/selected, sign-in). */
-    private val aiSignal: Flow<Any?> = emptyFlow()
+    private val aiSignal: Flow<Any?> = emptyFlow(),
+    /** Clears the AI settings (sign-ins, model and backend choice); used by [resetEverything]. */
+    private val resetAiSettings: suspend () -> Unit = {}
 ) : ViewModel() {
 
     private val enhancer = AiEnhancer(aiRouter ?: NoGenerativeSource)
@@ -148,13 +151,7 @@ class FinSightViewModel(
             .mapValues { (_, txs) -> txs.sumOf { it.amount } / months }
     }
 
-    val sliderReductions = MutableStateFlow<Map<TransactionCategory, Float>>(
-        mapOf(
-            TransactionCategory.CAFES_DINING to 0.20f,
-            TransactionCategory.TECH_GADGETS to 0.20f,
-            TransactionCategory.SUBSCRIPTIONS to 0.15f
-        )
-    )
+    val sliderReductions = MutableStateFlow(DEFAULT_SLIDER_REDUCTIONS)
 
     private val _selectedCategoryFilter = MutableStateFlow<TransactionCategory?>(null)
     val selectedCategoryFilter: StateFlow<TransactionCategory?> = _selectedCategoryFilter.asStateFlow()
@@ -410,6 +407,42 @@ class FinSightViewModel(
         )
     }
 
+    /** Deletes every transaction; everything else is kept. */
+    fun deleteAllTransactions() {
+        repository.deleteAllTransactions()
+        _selectedCategoryFilter.value = null
+    }
+
+    /** Deletes every savings goal; everything else is kept. */
+    fun deleteAllGoals() {
+        repository.deleteAllGoals()
+    }
+
+    /**
+     * Deletes all the user's data (transactions, budgets, goals, name, income) and returns the app to the
+     * first-launch intro. The theme and the AI model / sign-in settings are kept.
+     */
+    fun deleteAllData() {
+        wipeLocalData(resetTheme = false)
+    }
+
+    /**
+     * Factory reset: like [deleteAllData], and the theme and the AI settings (model and backend choice,
+     * Codex and Hugging Face sign-in) are cleared too.
+     */
+    fun resetEverything() {
+        viewModelScope.launch {
+            resetAiSettings()
+            wipeLocalData(resetTheme = true)
+        }
+    }
+
+    private fun wipeLocalData(resetTheme: Boolean) {
+        repository.deleteAllData(resetTheme)
+        _selectedCategoryFilter.value = null
+        sliderReductions.value = DEFAULT_SLIDER_REDUCTIONS
+    }
+
     /**
      * Ends the first-launch intro and never shows it again. With [monthlyIncome] / [name] / the goal
      * fields it first saves what was entered; call it with no arguments to skip and keep the defaults.
@@ -445,13 +478,22 @@ class FinSightViewModel(
     companion object {
         private const val SIMULATION_DEBOUNCE_MS = 700L
         const val DEFAULT_GOAL_ICON = "🎯"
+        private val DEFAULT_SLIDER_REDUCTIONS: Map<TransactionCategory, Float> = mapOf(
+            TransactionCategory.CAFES_DINING to 0.20f,
+            TransactionCategory.TECH_GADGETS to 0.20f,
+            TransactionCategory.SUBSCRIPTIONS to 0.15f
+        )
 
         fun factory(context: Context): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                CsvExporter.clearStaleExports(context.applicationContext)
                 val repository = DefaultFinSightRepository(context.applicationContext)
                 val ai = com.example.finsightai.AiServices.get(context)
-                return FinSightViewModel(repository, ai.router, ai.signal) as T
+                return FinSightViewModel(
+                    repository, ai.router, ai.signal,
+                    resetAiSettings = ai::resetSettings
+                ) as T
             }
         }
     }

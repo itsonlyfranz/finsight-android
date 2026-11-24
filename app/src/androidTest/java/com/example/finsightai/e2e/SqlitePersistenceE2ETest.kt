@@ -113,4 +113,61 @@ class SqlitePersistenceE2ETest {
         assertEquals(7_777.0, repo.currentBudget.value[TransactionCategory.GROCERIES]!!, 0.0)
         assertEquals(rows.size, FinSightDatabaseHelper(context, dbName).getAllTransactions().size)
     }
+
+    @Test fun deleteAllDataWipesTheUsersDataAndASecondRepositoryNeverSeesItOrSampleData() {
+        val first = repository()
+        SampleData.markSantosTransactions().forEach(first::addTransaction)
+        first.addGoal(com.example.finsightai.model.SavingsGoal("g1", "Trip", 10_000.0, 0.0, "🎯", ""))
+        first.updateUserName("Juan")
+        first.updateMonthlyIncome(61_000.0)
+        first.updateBudget(TransactionCategory.GROCERIES, 9_999.0)
+        first.updateTheme(AppTheme.MIDNIGHT_BLUE)
+        first.completeOnboarding()
+
+        first.deleteAllData()
+
+        repeat(3) {
+            val reopened = repository()
+            assertEquals("reopen #$it: no transactions", emptyList<Transaction>(), reopened.transactions.value)
+            assertEquals(emptyList<Any>(), reopened.goals.value)
+            assertEquals("", reopened.userName.value)
+            assertEquals(45_000.0, reopened.monthlyIncome.value, 0.0)
+            assertEquals(
+                TransactionCategory.GROCERIES.defaultMonthlyBudget,
+                reopened.currentBudget.value[TransactionCategory.GROCERIES]!!, 0.0
+            )
+            assertEquals("the intro is shown again", false, reopened.onboardingCompleted.value)
+            assertEquals("the theme is kept", AppTheme.MIDNIGHT_BLUE, reopened.currentTheme.value)
+        }
+    }
+
+    @Test fun resetEverythingAlsoBringsTheThemeBackToTheDefault() {
+        val first = repository()
+        first.updateTheme(AppTheme.CYBER_SLATE)
+        first.deleteAllData(resetTheme = true)
+        assertEquals(AppTheme.DECK_EMERALD, repository().currentTheme.value)
+    }
+
+    @Test fun deletingOnlyTransactionsOrOnlyGoalsLeavesTheRestInTheDatabase() {
+        val first = repository()
+        SampleData.markSantosTransactions().forEach(first::addTransaction)
+        first.addGoal(com.example.finsightai.model.SavingsGoal("g1", "Trip", 10_000.0, 0.0, "🎯", ""))
+        first.updateUserName("Juan")
+        val count = first.transactions.value.size
+
+        first.deleteAllGoals()
+        repository().let {
+            assertEquals(emptyList<Any>(), it.goals.value)
+            assertEquals(count, it.transactions.value.size)
+            assertEquals("Juan", it.userName.value)
+        }
+
+        first.addGoal(com.example.finsightai.model.SavingsGoal("g2", "Laptop", 20_000.0, 0.0, "💻", ""))
+        first.deleteAllTransactions()
+        repository().let {
+            assertEquals(emptyList<Transaction>(), it.transactions.value)
+            assertEquals(listOf("g2"), it.goals.value.map { g -> g.id })
+            assertEquals("Juan", it.userName.value)
+        }
+    }
 }

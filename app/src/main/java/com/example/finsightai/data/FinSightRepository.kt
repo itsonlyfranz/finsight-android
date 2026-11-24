@@ -41,6 +41,18 @@ interface FinSightRepository {
     fun deleteGoal(goalId: String)
     fun updateUserName(name: String)
     fun completeOnboarding()
+
+    /** Deletes every transaction. Name, income, budgets, goals and the theme are untouched. */
+    fun deleteAllTransactions()
+
+    /** Deletes every savings goal. Everything else is untouched. */
+    fun deleteAllGoals()
+
+    /**
+     * Deletes all the user's data (transactions, goals, budgets, name, income) and brings the first-launch
+     * intro back, as on a fresh install. The theme is kept unless [resetTheme]. Never writes sample data.
+     */
+    fun deleteAllData(resetTheme: Boolean = false)
     fun refreshInsights(): List<AiInsight>
     fun simulateSavings(targetReductions: Map<TransactionCategory, Float>): SimulationResult
 }
@@ -94,7 +106,7 @@ class DefaultFinSightRepository(
 
             _monthlyIncome = MutableStateFlow(dbHelper.getMonthlyIncome())
 
-            val themeStr = dbHelper.getSetting("app_theme", AppTheme.DECK_EMERALD.name)
+            val themeStr = dbHelper.getSetting(FinSightDatabaseHelper.SETTING_APP_THEME, AppTheme.DECK_EMERALD.name)
             val theme = try {
                 AppTheme.valueOf(themeStr)
             } catch (e: Exception) {
@@ -115,7 +127,7 @@ class DefaultFinSightRepository(
         } else {
             _transactions = MutableStateFlow(emptyList())
             _currentBudget = MutableStateFlow(defaultBudgets)
-            _monthlyIncome = MutableStateFlow(45000.0)
+            _monthlyIncome = MutableStateFlow(FinSightDatabaseHelper.DEFAULT_MONTHLY_INCOME)
             _currentTheme = MutableStateFlow(AppTheme.DECK_EMERALD)
             _goals = MutableStateFlow(emptyList())
             _userName = MutableStateFlow("")
@@ -197,7 +209,7 @@ class DefaultFinSightRepository(
     }
 
     override fun updateTheme(theme: AppTheme) {
-        dbHelper?.setSetting("app_theme", theme.name)
+        dbHelper?.setSetting(FinSightDatabaseHelper.SETTING_APP_THEME, theme.name)
         _currentTheme.value = theme
     }
 
@@ -237,6 +249,30 @@ class DefaultFinSightRepository(
     override fun completeOnboarding() {
         dbHelper?.setOnboardingCompleted(true)
         _onboardingCompleted.value = true
+    }
+
+    override fun deleteAllTransactions() {
+        dbHelper?.deleteAllTransactions()
+        _transactions.value = emptyList()
+        refreshInsights()
+    }
+
+    override fun deleteAllGoals() {
+        dbHelper?.deleteAllGoals()
+        _goals.value = emptyList()
+    }
+
+    override fun deleteAllData(resetTheme: Boolean) {
+        dbHelper?.deleteAllData(resetTheme)
+        _transactions.value = emptyList()
+        _goals.value = emptyList()
+        _currentBudget.value = defaultBudgets
+        _monthlyIncome.value = FinSightDatabaseHelper.DEFAULT_MONTHLY_INCOME
+        _userName.value = ""
+        if (resetTheme) _currentTheme.value = AppTheme.DECK_EMERALD
+        refreshInsights()
+        // Last, so the intro only appears once everything behind it is already empty.
+        _onboardingCompleted.value = false
     }
 
     override fun refreshInsights(): List<AiInsight> {
