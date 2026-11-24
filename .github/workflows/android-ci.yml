@@ -19,7 +19,7 @@ jobs:
     runs-on: finsight-android-mac
     timeout-minutes: 60
     env:
-      JAVA_HOME: /Applications/Android Studio.app/Contents/jbr/Contents/Home
+      JAVA_HOME: /opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
       CI_AVD: finsight_ci_api36
       # The CI emulator owns a fixed console port (adb serial emulator-<port>). This runner shares
       # one adb server with the captain's own emulators (finsight_api36 on 5554), so every adb call
